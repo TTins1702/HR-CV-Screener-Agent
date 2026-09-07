@@ -1,0 +1,117 @@
+# Canonical skill name -> the surface forms that mean it.
+# Comparison strips case, spaces and punctuation, so "React.js" and "reactjs"
+# are the same entry; list a form only when the letters differ.
+python:
+  - python3
+  - py
+javascript:
+  - js
+  - ecmascript
+typescript:
+  - ts
+react:
+  - reactjs
+  - react.js
+  - react native
+node.js:
+  - node
+  - nodejs
+  - node js
+postgresql:
+  - postgres
+  - psql
+mysql:
+  - my sql
+sql server:
+  - mssql
+  - t-sql
+  - transact-sql
+mongodb:
+  - mongo
+sql:
+  - structured query language
+amazon web services:
+  - aws
+google cloud platform:
+  - gcp
+  - google cloud
+microsoft azure:
+  - azure
+docker:
+  - dockerized
+  - containerization
+  - containerisation
+kubernetes:
+  - k8s
+  - kubectl
+ci/cd:
+  - cicd
+  - continuous integration
+  - continuous delivery
+  - continuous deployment
+jenkins:
+  - jenkinsfile
+rest api:
+  - rest
+  - restful
+  - restful api
+  - rest apis
+graphql:
+  - graph ql
+microservices:
+  - micro services
+  - microservice architecture
+git:
+  - github
+  - gitlab
+  - version control
+linux:
+  - unix
+  - bash
+  - shell scripting
+c#:
+  - csharp
+  - c sharp
+  - .net
+  - dotnet
+java:
+  - java se
+  - java ee
+  - j2ee
+golang:
+  - go
+spring boot:
+  - spring
+  - springboot
+django:
+  - django rest framework
+flask:
+  - flask api
+fastapi:
+  - fast api
+machine learning:
+  - ml
+  - deep learning
+tensorflow:
+  - tf
+  - keras
+pytorch:
+  - torch
+pandas:
+  - pandas dataframe
+excel:
+  - microsoft excel
+  - ms excel
+  - pivot tables
+tableau:
+  - tableau desktop
+power bi:
+  - powerbi
+  - microsoft power bi
+agile:
+  - scrum
+  - kanban
+  - sprint planning
+project management:
+  - pmp
+  - project manager
