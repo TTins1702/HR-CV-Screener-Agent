@@ -17,11 +17,17 @@ class FitLabel(str, Enum):
 
 
 class Evidence(BaseModel):
-    """A verbatim span of the CV that supports a score."""
+    """A verbatim span of the CV that supports a score.
+
+    `quote` is sliced from the original CV text, so it may contain the dataset's
+    glued sentence boundaries. `score` is 1.0 for an exact match and the
+    similarity ratio for a fuzzy one.
+    """
 
     quote: str = Field(min_length=1)
     start: int = Field(ge=0)
     end: int = Field(ge=0)
+    score: float = Field(default=1.0, ge=0.0, le=1.0)
 
     @model_validator(mode="after")
     def _span_must_be_forward(self) -> "Evidence":

@@ -29,6 +29,8 @@ class JDRubric(BaseModel):
     criteria: list[Criterion] = Field(min_length=1)
     good_fit_threshold: float = Field(default=0.70, ge=0.0, le=1.0)
     potential_fit_threshold: float = Field(default=0.40, ge=0.0, le=1.0)
+    gray_zone_margin: float = Field(default=0.05, ge=0.0, le=0.5)
+    must_have_min_score: float = Field(default=0.5, ge=0.0, le=1.0)
 
     @model_validator(mode="after")
     def _check_invariants(self) -> "JDRubric":
@@ -43,6 +45,13 @@ class JDRubric(BaseModel):
         if self.good_fit_threshold <= self.potential_fit_threshold:
             raise ValueError(
                 "good_fit_threshold must be greater than potential_fit_threshold"
+            )
+
+        gap = self.good_fit_threshold - self.potential_fit_threshold
+        if self.gray_zone_margin * 2 > gap:
+            raise ValueError(
+                f"gray_zone_margin {self.gray_zone_margin} is too wide for a threshold "
+                f"gap of {gap}: the two gray zones would overlap"
             )
         return self
 
