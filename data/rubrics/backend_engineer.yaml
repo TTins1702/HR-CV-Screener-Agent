@@ -1,0 +1,30 @@
+job_title: Backend Engineer
+good_fit_threshold: 0.70
+potential_fit_threshold: 0.40
+criteria:
+  - id: backend_language
+    description: Production experience with a backend language (Python, Java, Go or Node.js)
+    weight: 0.30
+    must_have: true
+    kind: skill
+  - id: years_experience
+    description: At least 3 years of professional software engineering experience
+    weight: 0.25
+    must_have: true
+    kind: experience_years
+  - id: databases
+    description: Hands-on experience with relational databases and SQL
+    weight: 0.15
+    kind: skill
+  - id: cloud_devops
+    description: Experience with cloud platforms, containers or CI/CD pipelines
+    weight: 0.15
+    kind: skill
+  - id: education
+    description: Bachelor's degree in Computer Science or a related field
+    weight: 0.10
+    kind: education
+  - id: domain
+    description: Experience building APIs or distributed backend services
+    weight: 0.05
+    kind: domain

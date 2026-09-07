@@ -1,0 +1,1 @@
+"""Rubric loader tests."""
