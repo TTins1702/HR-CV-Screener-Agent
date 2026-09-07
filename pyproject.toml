@@ -1,0 +1,13 @@
+[project]
+name = "hr-cv-screener"
+version = "0.1.0"
+description = "HR CV Screener Agent - LangGraph demo"
+requires-python = ">=3.12"
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
+addopts = "-m 'not network' -q"
+markers = [
+    "network: test requires internet access (deselected by default)",
+]
