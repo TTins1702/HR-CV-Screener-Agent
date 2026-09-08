@@ -28,6 +28,7 @@ from src.contracts.state import ScreeningState
 from src.contracts.trace import NodeTrace
 from src.graph.rubric_nodes import required_years
 from src.tools.evidence import search_evidence
+from src.tools.scorecard import aggregate_scorecard
 from src.tools.skills import expand_skill
 
 SCORE_SYSTEM = (
@@ -213,3 +214,167 @@ def make_score_criteria_node(llm: Any) -> Callable[[ScreeningState], dict]:
         }
 
     return score_criteria
+
+
+# A criterion scored inside this band has not really been decided, so it is what a
+# gray-zone second look should spend its tokens on.
+SECOND_LOOK_BAND = (0.3, 0.7)
+
+DEEP_REVIEW_SYSTEM = (
+    "A first pass scored this resume against the criteria below and the overall score "
+    "landed close to a decision threshold. Re-examine only the criteria listed, using "
+    "the quotes already found and the resume text. Return a revised score from 0.0 to "
+    "1.0 for each, and say briefly what changed your mind or confirmed the score."
+)
+
+
+class RawRevision(BaseModel):
+    """One revised score from the second look."""
+
+    criterion_id: str
+    score: float = Field(description="0.0 to 1.0")
+    reasoning: str
+
+
+class RawRevisions(BaseModel):
+    """The deep_review node's response schema."""
+
+    revisions: list[RawRevision]
+
+
+def aggregate(state: ScreeningState) -> dict:
+    """Combine the criterion scores deterministically.
+
+    A thin wrapper on purpose: the weighted sum and both threshold cuts decide the
+    `reject_fast` and `deep_review` branches, so they have to be reproducible to the
+    decimal and auditable outside the graph. That is why `aggregate_scorecard` is a
+    tool and not a paragraph of prompt.
+    """
+    started = time.perf_counter()
+    rubric = state.rubric
+    if rubric is None:
+        raise ValueError("aggregate reached without a rubric")
+
+    card = aggregate_scorecard(state.criterion_scores, rubric)
+    return {
+        "path_taken": ["aggregate"],
+        "scorecard": card,
+        "node_traces": [
+            NodeTrace.of(
+                "aggregate",
+                started,
+                note=(
+                    f"overall={card.overall_score:.4f} label={card.label.value} "
+                    f"gray={card.in_gray_zone} "
+                    f"missing_must_haves={len(card.missing_must_haves)} "
+                    f"unscored={len(card.unscored_criteria)}"
+                ),
+            )
+        ],
+    }
+
+
+def needs_second_look(scores: list[CriterionScore]) -> list[CriterionScore]:
+    """Criteria worth re-asking about: no evidence, or a score in the middle band.
+
+    Deterministic on purpose -- which criteria the second pass looks at must not
+    itself depend on a model call, or the branch stops being reproducible.
+    """
+    low, high = SECOND_LOOK_BAND
+    return [
+        score
+        for score in scores
+        if not score.evidence or low <= score.score <= high
+    ]
+
+
+def _revision_prompt(state: ScreeningState, thin: list[CriterionScore]) -> str:
+    descriptions = {
+        criterion.id: criterion.description
+        for criterion in (state.rubric.criteria if state.rubric else [])
+    }
+    lines: list[str] = []
+    for score in thin:
+        lines.append(
+            f"- {score.criterion_id}: {descriptions.get(score.criterion_id, '')} "
+            f"(current score {score.score:.2f})"
+        )
+        for span in score.evidence:
+            lines.append(f"    quote already found: {span.quote!r}")
+        if not score.evidence:
+            lines.append("    no supporting quote was found")
+    return (
+        "CRITERIA TO RE-EXAMINE:\n"
+        + "\n".join(lines)
+        + f"\n\nRESUME:\n{state.cv_text}"
+    )
+
+
+def make_deep_review_node(llm: Any) -> Callable[[ScreeningState], dict]:
+    """Build the `deep_review` node: one extra pass over the undecided criteria.
+
+    It runs at most once per screening and then edges unconditionally to `decide`,
+    re-aggregating internally rather than looping back to `aggregate`. That is why
+    there is no cycle to guard here and no second gray-zone test to oscillate on.
+    """
+
+    def deep_review(state: ScreeningState) -> dict:
+        started = time.perf_counter()
+        rubric = state.rubric
+        if rubric is None:
+            raise ValueError("deep_review reached without a rubric")
+
+        thin = needs_second_look(state.criterion_scores)
+        if not thin:
+            return {
+                "path_taken": ["deep_review"],
+                "node_traces": [
+                    NodeTrace.of(
+                        "deep_review", started, note="skipped: nothing thin to revise"
+                    )
+                ],
+            }
+
+        raw, usage = llm.parse(
+            system=DEEP_REVIEW_SYSTEM,
+            user=_revision_prompt(state, thin),
+            schema=RawRevisions,
+        )
+
+        by_id = {score.criterion_id: score for score in state.criterion_scores}
+        revised = 0
+        for revision in raw.revisions:
+            existing = by_id.get(revision.criterion_id)
+            if existing is None:
+                continue
+            by_id[revision.criterion_id] = existing.model_copy(
+                update={
+                    "score": min(max(revision.score, 0.0), 1.0),
+                    "reasoning": revision.reasoning,
+                    "tool_used": "deep_review",
+                }
+            )
+            revised += 1
+
+        scores = [
+            by_id[criterion.id] for criterion in rubric.criteria if criterion.id in by_id
+        ]
+        card = aggregate_scorecard(scores, rubric)
+        return {
+            "path_taken": ["deep_review"],
+            "criterion_scores": scores,
+            "scorecard": card,
+            "node_traces": [
+                NodeTrace.of(
+                    "deep_review",
+                    started,
+                    [usage],
+                    note=(
+                        f"reviewed={len(thin)} revised={revised} "
+                        f"overall={card.overall_score:.4f} label={card.label.value}"
+                    ),
+                )
+            ],
+        }
+
+    return deep_review

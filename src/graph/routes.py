@@ -34,3 +34,14 @@ def route_repair(state: ScreeningState) -> str:
 def route_must_have(state: ScreeningState) -> str:
     """A candidate failing a hard requirement skips scoring entirely."""
     return "reject_fast" if state.blocking_must_haves else "score_criteria"
+
+
+def route_gray_zone(state: ScreeningState) -> str:
+    """A score close to a threshold earns one more model pass; a clear one does not.
+
+    `JDRubric.gray_zone_margin` is the knob: at the default 0.05 this fired on 2 of
+    20 real pairs (10%), and at 0.0 it never fires, which is the ablation spec
+    section 7 asks for.
+    """
+    card = state.scorecard
+    return "deep_review" if card is not None and card.in_gray_zone else "decide"
