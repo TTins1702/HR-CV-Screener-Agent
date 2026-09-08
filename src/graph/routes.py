@@ -29,3 +29,8 @@ def route_repair(state: ScreeningState) -> str:
     if profile.missing_fields and state.repair_attempts < state.max_repair_attempts:
         return "repair"
     return "load_rubric"
+
+
+def route_must_have(state: ScreeningState) -> str:
+    """A candidate failing a hard requirement skips scoring entirely."""
+    return "reject_fast" if state.blocking_must_haves else "score_criteria"
