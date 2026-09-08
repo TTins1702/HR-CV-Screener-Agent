@@ -7,6 +7,8 @@ from enum import Enum
 
 from pydantic import BaseModel, Field, model_validator
 
+from src.contracts.trace import NodeTrace
+
 
 class FitLabel(str, Enum):
     """The three outcome classes. Values match the dataset labels byte-for-byte."""
@@ -46,7 +48,13 @@ class WorkPeriod(BaseModel):
 
 
 class CandidateProfile(BaseModel):
-    """Structured view of one CV, produced by the extract node."""
+    """Structured view of one CV, produced by the extract node.
+
+    `llm_declared_years` is what the model claimed; `total_experience_years` is what
+    `calculate_experience` computed and is the number the graph scores against. Over
+    24 real pairs the two never agreed, median gap 4.38 years -- keeping both is what
+    makes the tool's contribution measurable rather than assumed.
+    """
 
     raw_text: str
     skills: list[str] = Field(default_factory=list)
@@ -54,6 +62,7 @@ class CandidateProfile(BaseModel):
     degrees: list[str] = Field(default_factory=list)
     certifications: list[str] = Field(default_factory=list)
     total_experience_years: float | None = Field(default=None, ge=0.0)
+    llm_declared_years: float | None = Field(default=None, ge=0.0)
     extraction_confidence: float = Field(ge=0.0, le=1.0)
     missing_fields: list[str] = Field(default_factory=list)
 
@@ -79,3 +88,6 @@ class ScreeningResult(BaseModel):
     prompt_tokens: int = Field(default=0, ge=0)
     completion_tokens: int = Field(default=0, ge=0)
     latency_ms: float = Field(default=0.0, ge=0.0)
+    llm_calls: int = Field(default=0, ge=0)
+    cached_calls: int = Field(default=0, ge=0)
+    node_traces: list[NodeTrace] = Field(default_factory=list)
