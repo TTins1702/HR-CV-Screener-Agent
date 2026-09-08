@@ -14,7 +14,7 @@ import time
 
 from src.contracts.screening import ScreeningResult
 from src.contracts.state import ScreeningState
-from src.contracts.trace import NodeTrace
+from src.contracts.trace import NodeTrace, trace_totals
 
 
 def decide(state: ScreeningState) -> dict:
@@ -36,12 +36,8 @@ def decide(state: ScreeningState) -> dict:
         criterion_scores=list(state.criterion_scores),
         rejected_reason=reason,
         path_taken=[*state.path_taken, "decide"],
-        prompt_tokens=sum(trace.prompt_tokens for trace in state.node_traces),
-        completion_tokens=sum(trace.completion_tokens for trace in state.node_traces),
-        latency_ms=sum(trace.latency_ms for trace in state.node_traces),
-        llm_calls=sum(trace.llm_calls for trace in state.node_traces),
-        cached_calls=sum(trace.cached_calls for trace in state.node_traces),
         node_traces=list(state.node_traces),
+        **trace_totals(state.node_traces),
     )
     return {
         "path_taken": ["decide"],

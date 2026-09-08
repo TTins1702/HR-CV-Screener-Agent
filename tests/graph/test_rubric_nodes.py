@@ -309,3 +309,25 @@ def test_route_must_have_rejects_when_something_blocks():
 
 def test_route_must_have_scores_when_nothing_blocks():
     assert route_must_have(state()) == "score_criteria"
+
+
+def test_reject_fast_reports_the_tokens_the_shortcut_already_spent():
+    """Spec section 7 argues the agent is cheaper because of its shortcuts. That
+    argument needs the short-cut rows to report what they actually spent, not zero."""
+    from src.contracts.trace import NodeTrace
+
+    before = gated(rubric_of(skill_must_have("infra", "Kubernetes")), ["Python"])
+    before.blocking_must_haves = ["infra"]
+    before.node_traces = [
+        NodeTrace(node="extract", latency_ms=2000.0, prompt_tokens=1200,
+                  completion_tokens=250, llm_calls=1),
+        NodeTrace(node="load_rubric", latency_ms=900.0, prompt_tokens=600,
+                  completion_tokens=120, llm_calls=1),
+    ]
+
+    result = reject_fast(before)["result"]
+
+    assert result.prompt_tokens == 1800
+    assert result.completion_tokens == 370
+    assert result.llm_calls == 2
+    assert [t.node for t in result.node_traces] == ["extract", "load_rubric"]

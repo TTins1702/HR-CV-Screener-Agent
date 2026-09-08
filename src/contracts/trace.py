@@ -56,3 +56,20 @@ class NodeTrace(BaseModel):
             cached_calls=sum(1 for usage in usages if usage.cached),
             note=note,
         )
+
+
+def trace_totals(traces: Sequence[NodeTrace]) -> dict[str, float | int]:
+    """Roll a run's traces up into the totals `ScreeningResult` carries.
+
+    Every terminal node uses this, not just `decide`. A run that stopped at
+    `reject_fast` or `quarantine` still cost real tokens, and spec section 7 argues
+    the agent is cheaper *because* of those shortcuts -- an argument that needs the
+    short-cut rows to report what they spent rather than zero.
+    """
+    return {
+        "prompt_tokens": sum(trace.prompt_tokens for trace in traces),
+        "completion_tokens": sum(trace.completion_tokens for trace in traces),
+        "latency_ms": sum(trace.latency_ms for trace in traces),
+        "llm_calls": sum(trace.llm_calls for trace in traces),
+        "cached_calls": sum(trace.cached_calls for trace in traces),
+    }

@@ -25,7 +25,7 @@ from pydantic import BaseModel, Field
 from src.contracts.rubric import Criterion, JDRubric
 from src.contracts.screening import CandidateProfile, FitLabel, ScreeningResult
 from src.contracts.state import ScreeningState
-from src.contracts.trace import NodeTrace
+from src.contracts.trace import NodeTrace, trace_totals
 from src.rubric.loader import load_rubric as read_rubric
 from src.rubric.loader import save_rubric as write_rubric
 from src.tools.evidence import search_evidence
@@ -267,6 +267,8 @@ def reject_fast(state: ScreeningState) -> dict:
             label=FitLabel.NO_FIT,
             rejected_reason=reason,
             path_taken=[*state.path_taken, "reject_fast"],
+            node_traces=list(state.node_traces),
+            **trace_totals(state.node_traces),
         ),
         "node_traces": [NodeTrace.of("reject_fast", started, note=reason)],
     }

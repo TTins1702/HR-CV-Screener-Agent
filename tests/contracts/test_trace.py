@@ -63,3 +63,34 @@ def test_node_traces_accumulate_through_a_langgraph_reducer():
     final = Probe.model_validate(builder.compile().invoke(Probe()))
 
     assert [trace.node for trace in final.traces] == ["first", "second"]
+
+
+def test_trace_totals_add_up_the_whole_run():
+    from src.contracts.trace import trace_totals
+
+    totals = trace_totals([
+        NodeTrace(node="extract", latency_ms=2000.0, prompt_tokens=1200,
+                  completion_tokens=250, llm_calls=1),
+        NodeTrace(node="load_rubric", latency_ms=900.0, prompt_tokens=600,
+                  completion_tokens=120, cached_calls=1),
+    ])
+
+    assert totals == {
+        "prompt_tokens": 1800,
+        "completion_tokens": 370,
+        "latency_ms": 2900.0,
+        "llm_calls": 1,
+        "cached_calls": 1,
+    }
+
+
+def test_trace_totals_of_nothing_is_all_zero():
+    from src.contracts.trace import trace_totals
+
+    assert trace_totals([]) == {
+        "prompt_tokens": 0,
+        "completion_tokens": 0,
+        "latency_ms": 0.0,
+        "llm_calls": 0,
+        "cached_calls": 0,
+    }

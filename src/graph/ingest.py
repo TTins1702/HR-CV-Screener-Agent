@@ -14,7 +14,7 @@ import time
 from src.contracts.screening import FitLabel, ScreeningResult
 from src.contracts.state import ScreeningState
 from src.contracts.tools import InjectionSeverity
-from src.contracts.trace import NodeTrace
+from src.contracts.trace import NodeTrace, trace_totals
 from src.tools.injection import scan_injection
 
 EMPTY_DOCUMENT_FLAG = "empty_document"
@@ -77,6 +77,8 @@ def quarantine(state: ScreeningState) -> dict:
             label=FitLabel.NO_FIT,
             rejected_reason=reason,
             path_taken=[*state.path_taken, "quarantine"],
+            node_traces=list(state.node_traces),
+            **trace_totals(state.node_traces),
         ),
         "node_traces": [NodeTrace.of("quarantine", started, note=reason)],
     }

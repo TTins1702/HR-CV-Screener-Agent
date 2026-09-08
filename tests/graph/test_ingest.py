@@ -95,3 +95,16 @@ def test_route_guard_sends_a_quarantined_document_to_quarantine():
 
 def test_route_guard_sends_a_clean_document_to_extract():
     assert route_guard(state()) == "extract"
+
+
+def test_quarantine_still_reports_what_the_run_cost():
+    from src.contracts.trace import NodeTrace
+
+    before = state()
+    before.injection_flags = ["instruction_override"]
+    before.node_traces = [NodeTrace(node="guard", latency_ms=5.0, prompt_tokens=0)]
+
+    result = quarantine(before)["result"]
+
+    assert result.latency_ms == 5.0
+    assert [t.node for t in result.node_traces] == ["guard"]
