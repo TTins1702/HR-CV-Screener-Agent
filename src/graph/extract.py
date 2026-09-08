@@ -11,7 +11,19 @@ Nothing here routes on what the model says about its own output. Measured on 30 
 resumes, the model's `missing_fields` was non-empty 30 times out of 30 and its
 `extraction_confidence` never dropped below 0.90 -- routing on either would send 100%
 of traffic down `repair`, which is the definition of a decorative branch. The repair
-edge is driven by parsing the dates the model wrote, which fires on 40%.
+edge is driven instead by parsing the dates the model actually wrote.
+
+A note on how much traffic that carries, because the number moved during
+development and the reason matters. A weaker prototype prompt produced unusable
+date strings on 40% of resumes. `EXTRACT_SYSTEM` below names the three bad strings
+explicitly, and on the first live run that fix held: across 25 real resumes, 26 of
+182 date fields came back as genuine JSON nulls and not one non-null value failed to
+parse. The prompt engineered the original failure away. What replaced it is subtler
+-- a sentinel `0001-01` standing in for "the text does not say" -- which is why
+`parse_month` carries a plausibility floor. The branch is therefore small, and the
+honest reading is that it is now a safety net for a failure mode the prompt usually
+prevents rather than a hot path. `scripts/measure_branch_traffic.py` prints the
+current rate; trust it over any number written in prose.
 """
 
 from __future__ import annotations
@@ -26,7 +38,7 @@ from pydantic import BaseModel, Field
 from src.contracts.screening import CandidateProfile, WorkPeriod
 from src.contracts.state import ScreeningState
 from src.contracts.trace import NodeTrace
-from src.tools.experience import calculate_experience
+from src.tools.experience import EARLIEST_PLAUSIBLE_YEAR, calculate_experience
 
 EXTRACT_SYSTEM = (
     "You extract structured facts from a resume. The resume text often has spaces "
@@ -48,7 +60,8 @@ REPAIR_TEMPLATE = (
 
 # Everything the model writes instead of a date. "present" and "current" are here on
 # purpose: the protocol says null means current, and accepting a second spelling of
-# it invites a third. The 40% repair rate was measured under exactly this definition.
+# it invites a third. With the current prompt the model rarely reaches for any of
+# these -- see the note in the module docstring.
 UNUSABLE_DATE_TOKENS = frozenset(
     {
         "",
@@ -94,7 +107,16 @@ class RawExtraction(BaseModel):
 
 
 def parse_month(raw: str | None) -> date | None:
-    """`YYYY-MM`, `YYYY` or `YYYY-MM-DD` to a date; None for anything unusable."""
+    """`YYYY-MM`, `YYYY` or `YYYY-MM-DD` to a date; None for anything unusable.
+
+    A syntactically valid date is not automatically a usable one. Measured on the
+    first live run over 25 real resumes, `0001-01` was the single most common date
+    token the model wrote -- 8 of 182 date fields -- as a sentinel for "the text does
+    not say". It parses cleanly as year 1, so without a plausibility floor it lands
+    in a `WorkPeriod` looking like a real employment date. The floor is Day 2's
+    `EARLIEST_PLAUSIBLE_YEAR`, reused rather than duplicated so the graph and
+    `calculate_experience` cannot disagree about what a plausible career date is.
+    """
     if raw is None:
         return None
     token = raw.strip().lower()
@@ -102,10 +124,12 @@ def parse_month(raw: str | None) -> date | None:
         return None
     try:
         if len(token) == 4 and token.isdigit():
-            return date(int(token), 1, 1)
-        return date.fromisoformat(token if len(token) > 7 else f"{token}-01")
+            parsed = date(int(token), 1, 1)
+        else:
+            parsed = date.fromisoformat(token if len(token) > 7 else f"{token}-01")
     except ValueError:
         return None
+    return None if parsed.year < EARLIEST_PLAUSIBLE_YEAR else parsed
 
 
 def unusable_date_fields(extraction: RawExtraction) -> list[str]:

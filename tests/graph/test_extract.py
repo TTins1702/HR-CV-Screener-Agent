@@ -51,6 +51,32 @@ def test_parse_month_passes_a_genuine_null_through():
     assert parse_month(None) is None
 
 
+def test_parse_month_rejects_the_sentinel_date_the_model_uses_for_unknown():
+    """Measured on the first live run: `0001-01` was the single most common date
+    token the model wrote (8 of 182 fields). It parses as year 1, so without a
+    plausibility floor it flows into a WorkPeriod as a real date."""
+    assert parse_month("0001-01") is None
+    assert parse_month("0001-01-01") is None
+    assert parse_month("1900-05") is None
+    assert parse_month("1959-12") is None
+
+
+def test_parse_month_keeps_dates_a_real_career_could_contain():
+    assert parse_month("1960-01") == date(1960, 1, 1)
+    assert parse_month("2024-11") == date(2024, 11, 1)
+
+
+def test_an_implausible_date_is_flagged_for_repair():
+    raw = extraction(
+        work_periods=[RawPeriod(title="Consultant", company=None, start="0001-01", end=None)]
+    )
+
+    bad = unusable_date_fields(raw)
+
+    assert len(bad) == 1
+    assert "'0001-01'" in bad[0]
+
+
 def test_unusable_date_fields_ignores_a_genuine_null():
     raw = extraction(
         work_periods=[RawPeriod(title="Consultant", company=None, start="2021-01", end=None)]
