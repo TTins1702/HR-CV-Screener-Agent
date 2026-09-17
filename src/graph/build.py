@@ -14,6 +14,7 @@ from typing import Any
 
 from langgraph.graph import END, START, StateGraph
 
+from src.contracts.ablations import Ablations
 from src.contracts.rubric import JDRubric
 from src.contracts.screening import ScreeningResult
 from src.contracts.state import ScreeningState
@@ -128,15 +129,21 @@ def screen(
     rubric: JDRubric | None = None,
     today: date | None = None,
     derived_dir: Path | str = DERIVED_RUBRIC_DIR,
+    ablations: Ablations = Ablations(),
 ) -> ScreeningResult:
     """Screen one CV against one job description.
 
     `invoke` returns a plain dict, not a `ScreeningState`, so the output is
     re-validated before anything reads a field off it.
+
+    `build_graph` is deliberately not given the ablations: the switches arrive with
+    the state at `invoke`, so one compiled graph serves every configuration.
     """
     graph = build_graph(llm, today=today, derived_dir=derived_dir)
     output = graph.invoke(
-        ScreeningState(cv_text=cv_text, jd_text=jd_text, rubric=rubric)
+        ScreeningState(
+            cv_text=cv_text, jd_text=jd_text, rubric=rubric, ablations=ablations
+        )
     )
     final = ScreeningState.model_validate(output)
     if final.result is None:

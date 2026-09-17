@@ -12,7 +12,14 @@ from src.contracts.state import ScreeningState
 
 
 def route_guard(state: ScreeningState) -> str:
-    """Unsafe or empty documents stop here; everything else goes on to `extract`."""
+    """Unsafe or empty documents stop here; everything else goes on to `extract`.
+
+    With `ablations.guard` off the branch is dead and a poisoned CV is scored like
+    any other, which is the ablation spec section 7 asks for: the guard's value is
+    whatever the score does when it is gone.
+    """
+    if not state.ablations.guard:
+        return "extract"
     return "quarantine" if state.quarantined else "extract"
 
 
@@ -32,16 +39,28 @@ def route_repair(state: ScreeningState) -> str:
 
 
 def route_must_have(state: ScreeningState) -> str:
-    """A candidate failing a hard requirement skips scoring entirely."""
+    """A candidate failing a hard requirement skips scoring entirely.
+
+    With `ablations.must_have_gate` off, everybody is scored. `blocking_must_haves`
+    is still computed and still written to the `must_have_check` trace, so the run
+    records which rows *would* have been rejected -- that pairing is what makes the
+    counterfactual measurable row by row.
+    """
+    if not state.ablations.must_have_gate:
+        return "score_criteria"
     return "reject_fast" if state.blocking_must_haves else "score_criteria"
 
 
 def route_gray_zone(state: ScreeningState) -> str:
     """A score close to a threshold earns one more model pass; a clear one does not.
 
-    `JDRubric.gray_zone_margin` is the knob: at the default 0.05 this fired on 2 of
-    20 real pairs (10%), and at 0.0 it never fires, which is the ablation spec
-    section 7 asks for.
+    Two ways to switch this off, and they are not the same. `gray_zone_margin = 0.0`
+    on the rubric changes what `aggregate_scorecard` *computes*, so the run forgets
+    which rows were borderline. `ablations.gray_zone = False` changes only where the
+    run *goes*, leaving `Scorecard.in_gray_zone` true -- so the report can still say
+    how many second looks were skipped and what they would have cost.
     """
     card = state.scorecard
-    return "deep_review" if card is not None and card.in_gray_zone else "decide"
+    if card is None or not card.in_gray_zone:
+        return "decide"
+    return "deep_review" if state.ablations.gray_zone else "decide"
