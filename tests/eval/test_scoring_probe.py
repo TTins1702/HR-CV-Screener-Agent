@@ -280,3 +280,50 @@ def test_smallest_detectable_sample_reports_the_n_that_would_settle_it():
 
     assert needed > 150
     assert rows_needed(0.70, power=0.80) < needed
+
+
+def test_an_interval_entirely_below_chance_is_reported_as_inverted_not_as_real():
+    """Measured on held-out test_500: AUC 0.411, interval [0.340, 0.479].
+
+    "The interval excludes chance, so the ordering is real" reads as a success
+    when the interval sits below 0.5. The pipeline is ordering the two classes
+    backwards, significantly, and the sentence has to say which side it fell on.
+    """
+    from eval.scoring_probe import ProbeResult, render_scoring_probe
+
+    result = ProbeResult(
+        rows=256, positives=130, shipped_auc=0.411, ci_low=0.340, ci_high=0.479,
+        criterion_ceiling=0.451, text_ceiling=0.345,
+    )
+
+    text = render_scoring_probe(result)
+
+    assert "inverted" in text
+    assert "backwards" in text or "below" in text
+
+
+def test_an_interval_entirely_above_chance_still_reads_as_a_real_ordering():
+    from eval.scoring_probe import ProbeResult, render_scoring_probe
+
+    result = ProbeResult(
+        rows=256, positives=130, shipped_auc=0.700, ci_low=0.620, ci_high=0.780,
+        criterion_ceiling=0.710, text_ceiling=0.730,
+    )
+
+    text = render_scoring_probe(result)
+
+    assert "inverted" not in text
+    assert "real" in text
+
+
+def test_a_text_ceiling_below_chance_is_called_out_as_a_dataset_finding():
+    """A supervised model that transfers worse than a coin flip is saying
+    something about the labels, not about the agent."""
+    from eval.scoring_probe import ProbeResult, render_scoring_probe
+
+    result = ProbeResult(
+        rows=256, positives=130, shipped_auc=0.411, ci_low=0.340, ci_high=0.479,
+        criterion_ceiling=0.451, text_ceiling=0.345,
+    )
+
+    assert "does not transfer" in render_scoring_probe(result)

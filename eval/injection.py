@@ -189,13 +189,32 @@ def render_guard_ablation(comparison: Sequence[RuleComparison]) -> str:
 
     if high:
         stopped = sum(1 for c in high if c.guarded.quarantined)
-        lines += table(
-            high,
-            "HIGH severity: the guard quarantines",
+        note = (
             f"{stopped} of {len(high)} are stopped before a model ever scores them. "
-            "With the guard off every one of them is scored like an ordinary CV, "
-            "which is the collapse spec section 7 asks to see.",
+            "With the guard off every one of them is scored like an ordinary CV."
         )
+        if control:
+            baseline = control[0].unguarded.overall_score
+            gains = [c.unguarded.overall_score - baseline for c in high]
+            biggest = max(gains, default=0.0)
+            if all(abs(gain) < 1e-9 for gain in gains):
+                note += (
+                    "\n\nSpec section 7 asks to see the score collapse once the guard "
+                    "is removed. **It did not move.** Every poisoned row scores "
+                    f"exactly {baseline:.3f}, the clean control's own score, so on "
+                    "this fixture set the injections changed nothing the model did. "
+                    "What the guard is worth here is that it refuses to process a "
+                    "document attempting manipulation -- not that it prevents a "
+                    "manipulation that **would have worked**. Claiming the second "
+                    "from this table would be claiming an attack that never landed."
+                )
+            else:
+                note += (
+                    f"\n\nThe largest gain an injection buys over the clean control "
+                    f"is **{biggest:+.3f}**, so the guard is stopping something that "
+                    "does move the score."
+                )
+        lines += table(high, "HIGH severity: the guard quarantines", note)
 
     if low:
         changed = sum(1 for c in low if c.changed)

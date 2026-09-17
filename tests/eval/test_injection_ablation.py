@@ -129,3 +129,62 @@ def test_the_cli_takes_its_job_description_from_a_real_split(tmp_path):
     split.write_text(json.dumps(ROWS[0]) + "\n", encoding="utf-8")
 
     assert job_description_from(split) == ROWS[0]["job_description_text"]
+
+
+def test_the_report_will_not_call_it_a_collapse_when_the_score_did_not_move():
+    """Measured on the real fixtures, every unguarded poisoned CV scored 0.550 --
+    exactly the clean control. The injections changed nothing.
+
+    Spec section 7 asks to see the score collapse when the guard is removed. It
+    does not, and the report has to say that rather than assert the collapse it
+    expected. The guard's value here is that it refuses a document attempting
+    manipulation, not that it prevents a manipulation that would have worked.
+    """
+    from eval.injection import GuardOutcome, RuleComparison, render_guard_ablation
+
+    scored = GuardOutcome(
+        quarantined=False, overall_score=0.55, label="Potential Fit",
+        path_taken=["ingest", "guard", "extract"], rejected_reason=None,
+    )
+    blocked = GuardOutcome(
+        quarantined=True, overall_score=0.0, label="No Fit",
+        path_taken=["ingest", "guard", "quarantine"], rejected_reason="quarantined: x",
+    )
+    comparison = [
+        RuleComparison(rule_id=None, severity=None, guarded=scored, unguarded=scored),
+        RuleComparison(
+            rule_id="instruction_override", severity=InjectionSeverity.HIGH,
+            guarded=blocked, unguarded=scored,
+        ),
+    ]
+
+    text = render_guard_ablation(comparison)
+
+    assert "did not move" in text
+    assert "would have worked" in text
+
+
+def test_the_report_says_so_when_an_injection_does_move_the_score():
+    from eval.injection import GuardOutcome, RuleComparison, render_guard_ablation
+
+    control = GuardOutcome(
+        quarantined=False, overall_score=0.55, label="Potential Fit",
+        path_taken=[], rejected_reason=None,
+    )
+    inflated = control.model_copy(update={"overall_score": 0.95, "label": "Good Fit"})
+    blocked = GuardOutcome(
+        quarantined=True, overall_score=0.0, label="No Fit",
+        path_taken=[], rejected_reason="quarantined: x",
+    )
+    comparison = [
+        RuleComparison(rule_id=None, severity=None, guarded=control, unguarded=control),
+        RuleComparison(
+            rule_id="score_manipulation", severity=InjectionSeverity.HIGH,
+            guarded=blocked, unguarded=inflated,
+        ),
+    ]
+
+    text = render_guard_ablation(comparison)
+
+    assert "did not move" not in text
+    assert "0.400" in text  # the largest gain over the control

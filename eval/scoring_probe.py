@@ -381,6 +381,46 @@ def scoring_probe(
     )
 
 
+def _verdict(result: ProbeResult, inconclusive: bool) -> str:
+    """The sentence under the table, which has to name the side it fell on.
+
+    An interval that excludes chance from below is not a success. Measured on
+    held-out test_500 the shipped AUC is 0.411 with the interval entirely under
+    0.5, meaning the two classes come out ordered backwards, significantly --
+    and "the ordering is real" would read as the opposite.
+    """
+    good, potential = CONTESTED
+    if inconclusive:
+        return (
+            "Chance falls inside that interval, and so do both ceilings. On this "
+            "split the three rows of the table are not distinguishable from each "
+            "other, so it cannot be said whether the ordering is lost in the "
+            "scoring layer or was never in the data."
+        )
+
+    if result.ci_high < 0.5:
+        verdict = (
+            f"The interval lies entirely **below** chance, so the ordering is real "
+            f"and it is **inverted**: the pipeline puts true `{potential}` above "
+            f"true `{good}` more often than not, and the sample is large enough to "
+            "say so rather than to shrug. A score that is backwards carries signal; "
+            "it is pointed the wrong way."
+        )
+    else:
+        verdict = "The interval excludes chance, so the ordering is real."
+
+    if result.text_ceiling < 0.5:
+        verdict += (
+            f" The raw-text ceiling is {result.text_ceiling:.3f}, also below chance. "
+            "A supervised classifier fitted on these very labels **does not "
+            "transfer** between job descriptions -- what it learns on some is worse "
+            f"than a coin flip on others. That is a finding about how consistently "
+            f"the `{good}` / `{potential}` boundary was applied across this dataset, "
+            "not about this agent, and it bounds what any pipeline could score here."
+        )
+    return verdict
+
+
 def render_scoring_probe(result: ProbeResult) -> str:
     """The markdown for the probe, ceilings under the number they bound."""
     good, potential = CONTESTED
@@ -402,14 +442,7 @@ def render_scoring_probe(result: ProbeResult) -> str:
             f"95% bootstrap interval on the shipped figure: "
             f"**[{result.ci_low:.3f}, {result.ci_high:.3f}]**.",
             "",
-            (
-                "Chance falls inside that interval, and so do both ceilings. On this "
-                "split the three rows of the table are not distinguishable from each "
-                "other, so it cannot be said whether the ordering is lost in the "
-                "scoring layer or was never in the data."
-                if inconclusive
-                else "The interval excludes chance, so the ordering is real."
-            ),
+            _verdict(result, inconclusive),
         ]
     )
 
