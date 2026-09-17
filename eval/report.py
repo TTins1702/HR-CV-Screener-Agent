@@ -15,11 +15,12 @@ from __future__ import annotations
 
 from collections import Counter
 from collections.abc import Callable, Sequence
+from pathlib import Path
 
 from pydantic import BaseModel, Field
 
 from eval.metrics import LABELS, confusion_matrix, macro_f1, per_class
-from eval.records import RowRecord, scored_pairs
+from eval.records import RowRecord, read_records, scored_pairs
 
 BRANCHES: tuple[tuple[str, str], ...] = (
     ("guard", "quarantine"),
@@ -270,3 +271,53 @@ def compare(shipped: Sequence[RowRecord], ablated: Sequence[RowRecord]) -> str:
             f"Predictions that changed: **{flipped}** of {a.rows}.",
         ]
     )
+
+
+def main(argv: list[str] | None = None) -> int:
+    """Regenerate one measurement file from one record file.
+
+    The renderers above were always pure functions of the records, but nothing
+    ran them: the `.md` files under `docs/measurements/` were produced by hand.
+    Five of them then spent a day quoting a run whose records had been replaced,
+    which is the failure this entry point exists to make impossible. Spec
+    section 8 asks that every number on a slide come from one command; this is
+    that command for the per-run files.
+    """
+    import argparse
+
+    parser = argparse.ArgumentParser(description="records in, one measurement file out")
+    parser.add_argument("--records", type=Path, required=True)
+    parser.add_argument("--out", type=Path, required=True)
+    parser.add_argument(
+        "--gate",
+        action="store_true",
+        help="append the must-have gate's report card",
+    )
+    parser.add_argument(
+        "--against",
+        type=Path,
+        default=None,
+        help="a second record file to append a paired comparison against",
+    )
+    args = parser.parse_args(argv)
+
+    if not args.records.exists():
+        parser.error(f"no such record file: {args.records}")
+
+    records = read_records(args.records)
+    sections = [render_run(summarise_records(records))]
+    if args.gate:
+        sections.append(render_gate(gate_diagnosis(records)))
+    if args.against is not None:
+        if not args.against.exists():
+            parser.error(f"no such record file: {args.against}")
+        sections.append(compare(records, read_records(args.against)))
+
+    args.out.parent.mkdir(parents=True, exist_ok=True)
+    args.out.write_text("\n\n".join(sections) + "\n", encoding="utf-8")
+    print(f"wrote {args.out} from {args.records} ({len(records)} rows)")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

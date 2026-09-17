@@ -1,9 +1,10 @@
 import pytest
 
-from eval.records import RowRecord
+from eval.records import RowRecord, write_records
 from eval.report import (
     collapse_warning,
     compare,
+    main,
     gate_diagnosis,
     render_gate,
     render_run,
@@ -164,3 +165,40 @@ def test_a_healthy_spread_of_predictions_is_not_flagged():
     mixed = [record(0, GOOD, GOOD), record(1, NO, NO), record(2, POTENTIAL, POTENTIAL)]
 
     assert collapse_warning(summarise_records(mixed)) is None
+
+
+def test_the_cli_regenerates_a_measurement_file_from_records(tmp_path):
+    """`docs/measurements/*.md` went stale because nothing regenerated them.
+
+    Five files kept quoting a pre-gate-fix run for a day after the records had
+    been replaced. The renderer was always a pure function of the records; what
+    was missing was a command that ran it.
+    """
+    records = [record(0, GOOD, GOOD), record(1, NO, NO, REJECTED, blocking=["c1"])]
+    source = tmp_path / "agent__shipped.jsonl"
+    write_records(records, source)
+    out = tmp_path / "out.md"
+
+    assert main(["--records", str(source), "--out", str(out)]) == 0
+
+    text = out.read_text(encoding="utf-8")
+    assert "# agent / shipped over 2 rows" in text
+    assert "macro-F1" in text
+
+
+def test_the_cli_appends_the_gate_report_when_asked(tmp_path):
+    records = [record(0, GOOD, NO, REJECTED, blocking=["needs_clearance"])]
+    source = tmp_path / "agent__shipped.jsonl"
+    write_records(records, source)
+    out = tmp_path / "out.md"
+
+    main(["--records", str(source), "--out", str(out), "--gate"])
+
+    text = out.read_text(encoding="utf-8")
+    assert "The must-have gate, judged against the labels" in text
+    assert "needs_clearance" in text
+
+
+def test_the_cli_refuses_to_invent_a_report_for_records_that_are_not_there(tmp_path):
+    with pytest.raises(SystemExit):
+        main(["--records", str(tmp_path / "missing.jsonl"), "--out", str(tmp_path / "o.md")])
