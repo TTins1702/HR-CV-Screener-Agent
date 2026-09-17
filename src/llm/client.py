@@ -71,6 +71,7 @@ class StructuredLLM:
         seed: int | None = None,
         temperature: float = 0.0,
         cache: JSONLCache | None = None,
+        use_cache: bool = True,
         client: Any | None = None,
     ) -> None:
         load_environment()
@@ -81,7 +82,14 @@ class StructuredLLM:
             else int(os.environ.get("SCREENER_SEED", DEFAULT_SEED))
         )
         self.temperature = temperature
-        self.cache = cache if cache is not None else JSONLCache(DEFAULT_CACHE_PATH)
+        self.use_cache = use_cache
+        # With caching off there is nothing to open: building the JSONL cache
+        # anyway would parse the whole file on every construction for a reader
+        # that never runs.
+        if cache is not None:
+            self.cache = cache
+        else:
+            self.cache = JSONLCache(DEFAULT_CACHE_PATH) if use_cache else None
         self._client = client
         self.hits = 0
         self.misses = 0
@@ -109,15 +117,16 @@ class StructuredLLM:
             seed=self.seed,
         )
 
-        cached = self.cache.get(key)
-        if cached is not None:
-            self.hits += 1
-            return schema.model_validate_json(cached["content"]), LLMUsage(
-                prompt_tokens=cached["prompt_tokens"],
-                completion_tokens=cached["completion_tokens"],
-                latency_ms=(time.perf_counter() - started) * 1000.0,
-                cached=True,
-            )
+        if self.use_cache and self.cache is not None:
+            cached = self.cache.get(key)
+            if cached is not None:
+                self.hits += 1
+                return schema.model_validate_json(cached["content"]), LLMUsage(
+                    prompt_tokens=cached["prompt_tokens"],
+                    completion_tokens=cached["completion_tokens"],
+                    latency_ms=(time.perf_counter() - started) * 1000.0,
+                    cached=True,
+                )
 
         self.misses += 1
         response = self._request(messages, schema)
@@ -127,15 +136,16 @@ class StructuredLLM:
 
         content = message.content or ""
         value = schema.model_validate_json(content)
-        self.cache.put(
-            key,
-            {
-                "model": self.model,
-                "content": content,
-                "prompt_tokens": response.usage.prompt_tokens,
-                "completion_tokens": response.usage.completion_tokens,
-            },
-        )
+        if self.use_cache and self.cache is not None:
+            self.cache.put(
+                key,
+                {
+                    "model": self.model,
+                    "content": content,
+                    "prompt_tokens": response.usage.prompt_tokens,
+                    "completion_tokens": response.usage.completion_tokens,
+                },
+            )
         return value, LLMUsage(
             prompt_tokens=response.usage.prompt_tokens,
             completion_tokens=response.usage.completion_tokens,
