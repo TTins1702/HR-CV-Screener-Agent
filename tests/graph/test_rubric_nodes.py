@@ -331,3 +331,25 @@ def test_reject_fast_reports_the_tokens_the_shortcut_already_spent():
     assert result.completion_tokens == 370
     assert result.llm_calls == 2
     assert [t.node for t in result.node_traces] == ["extract", "load_rubric"]
+
+
+def test_a_skill_the_cv_spells_loosely_no_longer_blocks_before_scoring():
+    """The gate may be generous; precision belongs to `score_criteria`.
+
+    A missed skill costs a wrong rejection with no score at all. A spurious match
+    costs nothing -- the criterion is scored on its merits a moment later.
+
+    Measured 2026-09-17 on `dev_300`: at the old floor of 0.75 the skill gate
+    rejected 78 rows and 43 of those were not truly `No Fit` (precision 0.45).
+    `"PostgreSQL database"` scores 0.700 against CLEAN_CV -- inside the old gap.
+    """
+    rubric = rubric_of(skill_must_have("db", "PostgreSQL database"))
+
+    assert blocking_must_haves(gated(rubric, [])) == []
+
+
+def test_a_skill_that_is_nowhere_in_the_cv_still_blocks_at_the_lower_floor():
+    """Loosening the gate must not disarm it."""
+    rubric = rubric_of(skill_must_have("infra", "Kubernetes"))
+
+    assert blocking_must_haves(gated(rubric, [])) == ["infra"]

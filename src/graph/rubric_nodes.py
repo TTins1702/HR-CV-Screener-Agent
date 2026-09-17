@@ -176,6 +176,20 @@ def make_load_rubric_node(
 
 _YEARS_RE = re.compile(r"(\d{1,2})\s*\+?\s*(?:years|yrs)")
 
+# A gate is allowed to be generous: a missed skill costs a wrong rejection with no
+# score at all, while a spurious match only costs the criterion being scored normally
+# by `score_criteria` a moment later. `search_evidence`'s own default is
+# DEFAULT_MIN_SCORE = 0.75, and this is deliberately BELOW it -- anything above would
+# tighten the gate rather than loosen it.
+#
+# Measured on dev_300, 2026-09-17: at 0.75 the skill half of the gate rejected 78 rows
+# and 43 of them were not truly `No Fit`, a precision of 0.45. Lowering the floor to
+# 0.60 took macro-F1 from 0.3721 to 0.4155 for 9% more tokens -- better *and* cheaper
+# than switching the gate off entirely (0.4052 at +19.8% tokens), because the gate
+# still rejects true `No Fit` rows that scoring would have mislabelled. 0.55 scored
+# +0.0017 higher, which on 300 rows is noise, so 0.60 is the knee rather than the peak.
+FUZZY_GATE_FLOOR = 0.60
+
 
 def required_years(description: str) -> float | None:
     """The number of years a criterion description asks for, if it names one."""
@@ -197,7 +211,9 @@ def _has_skill(terms: list[str], profile: CandidateProfile, cv_text: str) -> boo
                 return True
     for term in terms:
         for surface in expand_skill(term):
-            if search_evidence(cv_text, surface, max_results=1):
+            if search_evidence(
+                cv_text, surface, max_results=1, min_score=FUZZY_GATE_FLOOR
+            ):
                 return True
     return False
 
