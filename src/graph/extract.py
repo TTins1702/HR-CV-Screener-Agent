@@ -8,10 +8,19 @@ the model saying 5.0 against the tool's 12.92. `llm_declared_years` keeps the cl
 so the difference survives into the eval and onto the slide.
 
 Nothing here routes on what the model says about its own output. Measured on 30 real
-resumes, the model's `missing_fields` was non-empty 30 times out of 30 and its
-`extraction_confidence` never dropped below 0.90 -- routing on either would send 100%
-of traffic down `repair`, which is the definition of a decorative branch. The repair
-edge is driven instead by parsing the dates the model actually wrote.
+resumes, the model's `missing_fields` was non-empty 30 times out of 30 -- routing on
+it would send 100% of traffic down `repair`, which is the definition of a decorative
+branch. The repair edge is driven instead by parsing the dates the model actually
+wrote.
+
+`extraction_confidence` is not decorative in that way, and an earlier version of this
+note had it wrong. Over the 1030 unique extractions in the cache it takes four values
+-- 0.0 (245), 0.90 (689), 0.95 (77) and 1.0 (19) -- so it does drop below 0.90, on
+23.8% of extractions. It is not uninformative either: a 0.0 means the total years
+figure is missing 90.2% of the time, against 15.9% everywhere else. What it is, is
+redundant. `total_experience_years is None` answers the same question exactly rather
+than at precision 0.902 and recall 0.639, and answers it without asking a model to
+grade itself. That is why the field is reported and never routed on.
 
 A note on how much traffic that carries, because the number moved during
 development and the reason matters. A weaker prototype prompt produced unusable
@@ -93,9 +102,14 @@ class RawPeriod(BaseModel):
 class RawExtraction(BaseModel):
     """The extract node's response schema.
 
-    No `missing_fields` and nothing routes on `extraction_confidence`: both were
-    measured to be uninformative. `extraction_confidence` is kept only because the
-    recruiter-facing view shows it.
+    No `missing_fields`, and nothing routes on `extraction_confidence`. The first was
+    measured to be uninformative; the second is informative but redundant, and the
+    module docstring has the numbers.
+
+    The field stays because removing it is not free: the cache key covers this
+    schema, so dropping it invalidates every extraction answer on disk and turns the
+    next run cold. It is reported to the recruiter-facing view instead, labelled for
+    what it is rather than as a confidence.
     """
 
     skills: list[str]

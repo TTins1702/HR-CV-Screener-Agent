@@ -199,3 +199,38 @@ def test_route_repair_moves_on_when_the_profile_is_clean():
 
 def test_route_repair_moves_on_when_there_is_no_profile_at_all():
     assert route_repair(state()) == "load_rubric"
+
+
+def test_nothing_in_the_graph_routes_on_extraction_confidence():
+    """The field is reported, never acted on.
+
+    It is a four-value self-report that mostly restates whether a total years
+    figure came out, and the pipeline can check that directly. Routing on it
+    would put a model's opinion of its own work in the control flow.
+    """
+    import inspect
+
+    from src.graph import routes
+
+    source = inspect.getsource(routes)
+
+    assert "extraction_confidence" not in source
+
+
+def test_extraction_confidence_stays_in_the_response_schema():
+    """Dropping it is not the cheap tidy-up it looks like.
+
+    The field is part of `RawExtraction`, and the cache key covers the response
+    schema, so removing it invalidates every one of the extraction answers on
+    disk and turns the next run cold. Keeping an unused field is the cheaper of
+    the two mistakes; this test is here so the choice is made deliberately.
+    """
+    assert "extraction_confidence" in RawExtraction.model_fields
+
+
+def test_a_confidence_the_model_invents_is_still_clamped_to_the_contract():
+    profile, _ = build_profile(
+        state(), extraction(extraction_confidence=7.5), today=TODAY
+    )
+
+    assert profile.extraction_confidence == 1.0
