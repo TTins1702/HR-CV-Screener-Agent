@@ -10,3 +10,7 @@ eval/cache/
 outputs/
 *.egg-info/
 .ipynb_checkpoints/
+docs/
+data/cache/
+data/rubrics/derived/
+data/eval/

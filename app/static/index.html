@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HR CV Screener Agent — Autonomous Multi-Step Evaluation</title>
+  <link rel="stylesheet" href="/static/css/style.css?v=20260917_04">
+</head>
+<body>
+
+  <!-- Top Navbar -->
+  <header class="app-header">
+    <div class="brand-group">
+      <div class="brand-icon">🛡️</div>
+      <div>
+        <div class="brand-title">HR CV Screener Agent</div>
+        <div class="brand-subtitle">Đánh giá CV tự động liên kết Evidence với LangGraph Observability</div>
+      </div>
+    </div>
+    <div class="header-actions">
+      <span class="badge-tag indigo">LangGraph v1.2+</span>
+      <span class="badge-tag">Deterministic Tools (5/5)</span>
+      <button id="btnOpenSettings" class="btn-secondary">⚙️ Cài đặt & Ablations</button>
+    </div>
+  </header>
+
+  <!-- 3-Column Main Workspace -->
+  <main class="main-layout">
+
+    <!-- Column 1: Input & Configuration -->
+    <section class="panel-card">
+      <div class="panel-header">
+        <div class="panel-title">📄 1. Dữ liệu đầu vào & Thiết lập</div>
+        <span class="badge-tag" id="presetBadge">Tùy chỉnh</span>
+      </div>
+      <div class="panel-body">
+        
+        <!-- Preset Selector -->
+        <div class="form-group">
+          <label class="form-label" for="presetSelect">Kịch bản thử nghiệm / Preset:</label>
+          <select id="presetSelect" class="form-select">
+            <option value="">-- Nhập tùy chỉnh (Dán hoặc Tải file) --</option>
+          </select>
+        </div>
+
+        <div id="scenarioBox" class="scenario-info-box" style="display: none;">
+          <div id="scenarioDesc" style="margin-bottom: 0.25rem;"></div>
+          <div style="font-size: 0.75rem; opacity: 0.85;">Kỳ vọng: <code id="expectedBranch"></code></div>
+        </div>
+
+        <!-- CV Input Area -->
+        <div class="form-group">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <label class="form-label">CV ứng viên / Resume:</label>
+            <div class="tab-nav" style="margin-bottom: 0;">
+              <button class="tab-btn active" id="tabCvText">Văn bản</button>
+              <button class="tab-btn" id="tabCvUpload">Tải file lên</button>
+            </div>
+          </div>
+          
+          <div id="cvTextInputWrapper">
+            <textarea id="cvText" class="form-textarea" placeholder="Dán nội dung CV ứng viên tại đây..."></textarea>
+          </div>
+
+          <div id="cvUploadWrapper" style="display: none;">
+            <div id="dropzone" class="dropzone-box">
+              <div style="font-size: 1.5rem; margin-bottom: 0.25rem;">📄</div>
+              <div style="font-size: 0.82rem; font-weight: 600; color: var(--text-primary);">Nhấp hoặc Kéo & Thả CV (.pdf, .txt, .md)</div>
+              <div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 0.2rem;">Tự động trích xuất văn bản bằng pdfplumber</div>
+              <input type="file" id="fileInput" accept=".pdf,.txt,.md" style="display: none;">
+            </div>
+            <div id="uploadStatus" style="font-size: 0.78rem; color: var(--text-secondary); margin-top: 0.35rem;"></div>
+          </div>
+        </div>
+
+        <!-- JD Input Area -->
+        <div class="form-group">
+          <label class="form-label" for="jdText">Mô tả công việc (Job Description - JD):</label>
+          <textarea id="jdText" class="form-textarea" style="min-height: 100px;" placeholder="Dán yêu cầu tuyển dụng (JD) tại đây..."></textarea>
+        </div>
+
+        <!-- Rubric Preset -->
+        <div class="form-group">
+          <label class="form-label" for="rubricSelect">Tiêu chí chấm điểm (Scoring Rubric):</label>
+          <select id="rubricSelect" class="form-select">
+            <option value="auto">Tự động suy luận từ JD (Graph node)</option>
+            <option value="backend_engineer" selected>Backend Engineer (YAML Rubric mẫu)</option>
+          </select>
+        </div>
+
+      </div>
+
+      <!-- Action Footer -->
+      <div class="panel-footer">
+        <button id="btnRunScreen" class="btn-primary" style="margin-top: 0;">
+          <span>🚀 Chạy Screener Agent</span>
+        </button>
+      </div>
+    </section>
+
+    <!-- Column 2: Decision, Evidence, Technical Trace & E2 Analysis -->
+    <section class="panel-card">
+      <div class="panel-header">
+        <div class="panel-title">🎯 2. Quyết định & Bằng chứng (Evidence)</div>
+        <div style="display: flex; align-items: center; gap: 0.5rem;">
+          <span id="pipelineStatusBadge" class="badge-tag">Chờ thực thi</span>
+          <button id="btnExportJson" class="btn-secondary" style="display: none; padding: 0.25rem 0.6rem; font-size: 0.75rem;">📥 Xuất JSON</button>
+        </div>
+      </div>
+      <div class="panel-body">
+
+        <!-- Initial Empty State -->
+        <div id="outputEmptyState" style="padding: 3.5rem 1.5rem; text-align: center; color: var(--text-muted); border: 1.5px dashed var(--border-subtle); border-radius: var(--radius-md); margin-top: 1rem;">
+          <div style="font-size: 2.5rem; margin-bottom: 0.75rem;">🤖</div>
+          <div style="font-size: 1.05rem; font-weight: 600; color: var(--text-primary); margin-bottom: 0.35rem;">Chưa có kết quả sàng lọc</div>
+          <div style="font-size: 0.85rem; max-width: 460px; margin: 0 auto; line-height: 1.5; color: var(--text-secondary);">
+            Chọn một <strong>Kịch bản thử nghiệm</strong> ở bảng bên trái hoặc dán nội dung CV & JD, sau đó nhấn <strong>Chạy Screener Agent</strong> để xem đánh giá và chi tiết kỹ thuật.
+          </div>
+        </div>
+
+        <!-- Final Verdict Banner -->
+        <div id="verdictBanner" class="verdict-banner nofit" style="display: none;">
+          <div class="verdict-title">
+            <span id="verdictIcon">✓</span>
+            <span id="verdictLabel">Good Fit</span>
+          </div>
+          <div class="verdict-score" id="verdictScore">85.0% Match</div>
+        </div>
+
+        <div id="rejectedReasonAlert" class="scenario-info-box" style="display: none; background-color: #FEF2F2; border-color: #FECACA; color: #991B1B;">
+          <strong>Lý do từ chối:</strong> <span id="rejectedReasonText"></span>
+        </div>
+
+        <!-- Output Tabs -->
+        <div class="tab-nav" id="outputTabNav" style="display: none;">
+          <button class="tab-btn active" data-tab="scorecardTab">Scorecard</button>
+          <button class="tab-btn" data-tab="evidenceTab">Evidence (E1)</button>
+          <button class="tab-btn" data-tab="traceTab">Chi tiết kỹ thuật (Trace)</button>
+          <button class="tab-btn" data-tab="e2Tab">Giá trị Agent (E2)</button>
+        </div>
+
+        <!-- Tab 1: Criteria Scorecard -->
+        <div id="scorecardTab" class="tab-content" style="display: none;">
+          <div id="scorecardList" class="scorecard-list"></div>
+        </div>
+
+        <!-- Tab 2: Interactive Evidence Highlighter -->
+        <div id="evidenceTab" class="tab-content" style="display: none;">
+          <div class="form-group" style="margin-bottom: 0.65rem;">
+            <label class="form-label" for="criterionFilterSelect">Chọn tiêu chí để làm nổi bật (Highlight):</label>
+            <select id="criterionFilterSelect" class="form-select"></select>
+          </div>
+          <div id="cvDocumentViewer" class="cv-viewer-container">
+            <em>Chạy Screener Agent để kiểm tra trích dẫn bằng chứng (evidence) nguyên văn từ CV.</em>
+          </div>
+          <div id="evidenceQuotesList" style="margin-top: 0.75rem; font-size: 0.78rem; color: var(--text-secondary);"></div>
+        </div>
+
+        <!-- Tab 3: Chi tiết kỹ thuật (Trace & Stepper) -->
+        <div id="traceTab" class="tab-content" style="display: none;">
+          <!-- Telemetry Summary Bar -->
+          <div class="telemetry-bar" style="margin-bottom: 0.85rem;">
+            <div class="telemetry-item">
+              <span class="telemetry-label">Tổng thời gian</span>
+              <span class="telemetry-value" id="valLatency">0 ms</span>
+            </div>
+            <div class="telemetry-item">
+              <span class="telemetry-label">Tokens</span>
+              <span class="telemetry-value" id="valTokens">0</span>
+            </div>
+            <div class="telemetry-item">
+              <span class="telemetry-label">Lượt gọi LLM</span>
+              <span class="telemetry-value" id="valLlmCalls">0</span>
+            </div>
+          </div>
+
+          <!-- Stepper Node Timeline Container -->
+          <div id="stepperContainer" class="stepper-timeline" style="max-height: calc(100vh - 280px);">
+            <div style="padding: 2rem 1rem; text-align: center; color: var(--text-muted); border: 1.5px dashed var(--border-subtle); border-radius: var(--radius-md);">
+              Nhấn <strong>Chạy Screener Agent</strong> để theo dõi luồng suy luận đa bước theo thời gian thực.
+            </div>
+          </div>
+        </div>
+
+        <!-- Tab 4: Agentic Value Proof E2 -->
+        <div id="e2Tab" class="tab-content" style="display: none;">
+          <div style="font-size: 0.82rem; color: var(--text-secondary); margin-bottom: 0.65rem;">
+            Minh chứng lợi thế định lượng so với đánh giá LLM single-prompt thông thường:
+          </div>
+          
+          <div class="e2-comparison-grid">
+            <div class="e2-metric-card">
+              <div class="e2-metric-title">Kinh nghiệm LLM đọc</div>
+              <div class="e2-metric-num" id="e2LlmExp">-- năm</div>
+              <div style="font-size: 0.7rem; color: var(--text-muted);">Khai báo chưa kiểm chứng qua tool</div>
+            </div>
+            <div class="e2-metric-card">
+              <div class="e2-metric-title">Kinh nghiệm Tool tính toán</div>
+              <div class="e2-metric-num" id="e2ToolExp">-- năm</div>
+              <div style="font-size: 0.7rem; color: #059669;" id="e2ExpDiff">Đã gộp trùng lặp</div>
+            </div>
+          </div>
+
+          <div style="margin-top: 1rem;">
+            <div class="form-label" style="margin-bottom: 0.35rem;">Kỹ năng trích xuất & Chuẩn hóa:</div>
+            <div id="e2SkillsBox" style="display: flex; gap: 0.35rem; flex-wrap: wrap;"></div>
+          </div>
+
+          <div style="margin-top: 1rem;" id="e2ShortcutBox"></div>
+        </div>
+
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Modal Settings & Ablations -->
+  <div id="settingsModal" class="modal-overlay">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 style="font-size: 1.05rem; font-weight: 700;">⚙️ Cài đặt hệ thống & Ablations</h3>
+        <button id="btnCloseSettings" style="background: none; border: none; font-size: 1.2rem; cursor: pointer;">✕</button>
+      </div>
+      
+      <div class="form-group" style="margin-bottom: 0.85rem;">
+        <label class="form-label" for="apiKeyInput">OpenAI API Key (tùy chọn nếu đã có trong .env):</label>
+        <input type="password" id="apiKeyInput" class="form-input" placeholder="sk-...">
+      </div>
+
+      <div class="form-group" style="margin-bottom: 1rem;">
+        <label class="form-label" for="modelSelect">Mô hình LLM (Model):</label>
+        <select id="modelSelect" class="form-select">
+          <option value="gpt-4o-mini" selected>gpt-4o-mini (Tiết kiệm chi phí)</option>
+          <option value="gpt-4o">gpt-4o (Frontier Model)</option>
+        </select>
+      </div>
+
+      <div class="form-label" style="margin-bottom: 0.5rem;">Cơ chế phòng thủ & Nhánh rẽ (Ablations):</div>
+      
+      <div class="toggle-item">
+        <div>
+          <div style="font-size: 0.82rem; font-weight: 600;">Lớp bảo vệ Guard (Prompt Injection)</div>
+          <div style="font-size: 0.72rem; color: var(--text-muted);">Cách ly (Quarantine) tài liệu khi phát hiện chỉ thị tấn công</div>
+        </div>
+        <input type="checkbox" id="toggleGuard" checked>
+      </div>
+
+      <div class="toggle-item">
+        <div>
+          <div style="font-size: 0.82rem; font-weight: 600;">Cổng điều kiện tiên quyết Must-Have (Fast Reject)</div>
+          <div style="font-size: 0.72rem; color: var(--text-muted);">Ngắt sớm (Short-circuit) khi thiếu kỹ năng bắt buộc để tiết kiệm token</div>
+        </div>
+        <input type="checkbox" id="toggleMustHave" checked>
+      </div>
+
+      <div class="toggle-item">
+        <div>
+          <div style="font-size: 0.82rem; font-weight: 600;">Đánh giá chuyên sâu Deep Review (Gray Zone)</div>
+          <div style="font-size: 0.72rem; color: var(--text-muted);">Phản biện đa góc nhìn cho hồ sơ ở vùng điểm ranh giới</div>
+        </div>
+        <input type="checkbox" id="toggleGrayZone" checked>
+      </div>
+
+      <div style="margin-top: 1.25rem; display: flex; justify-content: flex-end;">
+        <button id="btnSaveSettings" class="btn-primary" style="width: auto; padding: 0.45rem 1.25rem;">Lưu & Đóng</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/static/js/app.js?v=20260917_04"></script>
+</body>
+</html>
