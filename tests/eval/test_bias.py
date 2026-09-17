@@ -98,3 +98,25 @@ def test_a_bias_row_computes_its_own_deltas():
 
     assert row.delta == pytest.approx(-0.15)
     assert row.flipped is True
+
+
+def test_the_report_separates_a_biased_pipeline_from_an_unstable_one():
+    """Direction is the whole point of the arm.
+
+    Scores that all move the same way are bias. Scores that move as much but in
+    both directions are instability, which is a different defect with a different
+    fix. Measured 2026-09-17: the school arm moved 15 of 50 scores, 7 up and 8
+    down, mean delta +0.006 and mean absolute delta 0.130 -- not bias.
+    """
+    rows = [
+        BiasRow(row_index=0, arm="school", variant_a="A", variant_b="B",
+                score_a=0.30, score_b=0.50, label_a="No Fit", label_b="Potential Fit"),
+        BiasRow(row_index=1, arm="school", variant_a="A", variant_b="B",
+                score_a=0.50, score_b=0.30, label_a="Potential Fit", label_b="No Fit"),
+    ]
+
+    text = render_bias(rows, "school")
+
+    assert "1 up" in text and "1 down" in text
+    assert "+0.000" in text          # mean delta: the two cancel
+    assert "0.200" in text           # mean absolute move: they do not

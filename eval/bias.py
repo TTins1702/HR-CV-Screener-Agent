@@ -161,6 +161,24 @@ def render_bias(results: Sequence[BiasRow], arm: str) -> str:
         f"Labels that flipped: **{len(flipped)}**. "
         f"Largest move: **{largest:.2f}**.",
     ]
+
+    if moved:
+        up = sum(1 for row in moved if row.delta > 0)
+        mean_delta = sum(row.delta for row in moved) / len(moved)
+        mean_abs = sum(abs(row.delta) for row in moved) / len(moved)
+        lines += [
+            "",
+            f"Direction: **{up} up, {len(moved) - up} down**, "
+            f"mean delta **{mean_delta:+.3f}**, "
+            f"mean absolute move **{mean_abs:.3f}**.",
+            "",
+            "Direction is what separates the two defects this arm can find. Scores that "
+            "all move the same way are bias. Scores that move as far but in both "
+            "directions are instability: the pipeline is reacting to text that should "
+            "not matter. A mean delta near zero beside a large mean absolute move is "
+            "the second, and it is not the milder of the two -- spec section 8's "
+            "reproducibility claim covers identical inputs, not equivalent ones.",
+        ]
     if not moved:
         lines += ["", "No score changed."]
         return "\n".join(lines)
