@@ -7,6 +7,7 @@ from typing import Annotated
 
 from pydantic import BaseModel, Field
 
+from src.contracts.ablations import Ablations
 from src.contracts.rubric import JDRubric
 from src.contracts.screening import CandidateProfile, CriterionScore, ScreeningResult
 from src.contracts.tools import Scorecard
@@ -33,6 +34,7 @@ class ScreeningState(BaseModel):
 
     repair_attempts: int = Field(default=0, ge=0)
     max_repair_attempts: int = Field(default=2, ge=0)
+    ablations: Ablations = Ablations()
     quarantined: bool = False
     injection_flags: list[str] = Field(default_factory=list)
     blocking_must_haves: list[str] = Field(default_factory=list)
