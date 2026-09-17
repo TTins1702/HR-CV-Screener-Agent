@@ -67,3 +67,15 @@ def test_must_haves_returns_only_the_flagged_criteria():
 def test_default_thresholds_are_ordered():
     rubric = JDRubric(job_title="Backend Engineer", criteria=_criteria(1.0))
     assert rubric.good_fit_threshold > rubric.potential_fit_threshold
+
+
+def test_criterion_carries_the_concrete_skill_terms_the_gate_checks():
+    from src.contracts.rubric import Criterion
+
+    plain = Criterion(id="db", description="SQL", weight=1.0)
+    typed = Criterion(
+        id="db", description="SQL", weight=1.0, kind="skill", skill_terms=["postgresql", "mysql"]
+    )
+
+    assert plain.skill_terms == []
+    assert typed.skill_terms == ["postgresql", "mysql"]

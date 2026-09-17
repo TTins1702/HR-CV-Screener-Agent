@@ -13,13 +13,19 @@ WEIGHT_SUM_TOLERANCE = 1e-6
 
 
 class Criterion(BaseModel):
-    """One requirement lifted out of a job description."""
+    """One requirement lifted out of a job description.
+
+    `skill_terms` names the concrete skills a `kind="skill"` criterion requires, so
+    `must_have_check` can test for them deterministically before any scoring happens.
+    Empty for every other kind.
+    """
 
     id: str = Field(min_length=1)
     description: str = Field(min_length=1)
     weight: float = Field(ge=0.0, le=1.0)
     must_have: bool = False
     kind: CriterionKind = "other"
+    skill_terms: list[str] = Field(default_factory=list)
 
 
 class JDRubric(BaseModel):

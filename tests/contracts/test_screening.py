@@ -69,3 +69,29 @@ def test_screening_result_carries_the_label_and_defaults_usage_to_zero():
     assert result.completion_tokens == 0
     assert result.latency_ms == 0.0
     assert result.rejected_reason is None
+
+
+def test_profile_records_what_the_llm_claimed_alongside_the_corrected_total():
+    from src.contracts.screening import CandidateProfile
+
+    profile = CandidateProfile(
+        raw_text="cv",
+        extraction_confidence=0.9,
+        llm_declared_years=5.0,
+        total_experience_years=12.92,
+    )
+
+    assert profile.llm_declared_years == 5.0
+    assert profile.total_experience_years == 12.92
+
+
+def test_result_counts_live_and_cached_model_calls():
+    from src.contracts.screening import FitLabel, ScreeningResult
+
+    result = ScreeningResult(
+        overall_score=0.5, label=FitLabel.POTENTIAL_FIT, llm_calls=2, cached_calls=1
+    )
+
+    assert result.llm_calls == 2
+    assert result.cached_calls == 1
+    assert result.node_traces == []
