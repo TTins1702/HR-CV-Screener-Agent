@@ -44,11 +44,20 @@ NAIVE_SYSTEM = (
     "label: 'Good Fit', 'Potential Fit', or 'No Fit'. Give no explanation."
 )
 
+# The first draft of this prompt ended with "A candidate missing a criterion marked
+# must-have cannot be a Good Fit." Measured 2026-09-17 over dev_300, it answered
+# `No Fit` on 297 of 300 rows -- nearly every rubric carries a must-have, and the
+# model could not verify them from the CV, so it refused everybody. That produced
+# macro-F1 0.2405, which would have been a claim about this prompt rather than about
+# the agent. Spec section 7 asks for a baseline that is genuinely hard to beat, so
+# the absolute rule is gone and the model is pointed at the thresholds instead.
 RUBRIC_JUDGE_SYSTEM = (
     "You are screening a resume against a job description using a fixed rubric. "
-    "Weigh every criterion by its weight. A candidate missing a criterion marked "
-    "must-have cannot be a Good Fit. Answer with exactly one label: 'Good Fit', "
-    "'Potential Fit', or 'No Fit'. Give no explanation."
+    "Score each criterion from the resume, weigh the scores by the criterion "
+    "weights, and compare the weighted total against the two thresholds given. "
+    "Use the full range of labels: most candidates are not a perfect match and not "
+    "a total mismatch. Answer with exactly one label: 'Good Fit', 'Potential Fit', "
+    "or 'No Fit'. Give no explanation."
 )
 
 

@@ -2,6 +2,7 @@ import pytest
 
 from eval.records import RowRecord
 from eval.report import (
+    collapse_warning,
     compare,
     gate_diagnosis,
     render_gate,
@@ -130,3 +131,36 @@ def test_comparing_two_configurations_shows_what_the_branch_bought():
 def test_comparing_requires_the_two_runs_to_cover_the_same_rows():
     with pytest.raises(ValueError, match="same rows"):
         compare([record(0, GOOD, GOOD)], [record(5, GOOD, GOOD, config="no_guard")])
+
+
+def test_a_system_that_answers_almost_everything_the_same_way_is_flagged():
+    """A collapsed baseline flatters whatever it is compared against.
+
+    Spec section 7 asks for a *strong* rubric-in-prompt baseline. The first draft
+    of its prompt told the model that a missing must-have rules out Good Fit, and
+    it answered `No Fit` on 297 of 300 rows. Reporting that as "the strong baseline
+    loses badly" would have been a claim about the prompt, not about the agent.
+    """
+    collapsed = [record(i, GOOD if i < 3 else NO, NO) for i in range(20)]
+
+    warning = collapse_warning(summarise_records(collapsed))
+
+    assert warning is not None
+    assert "20 of 20" in warning
+    assert "100%" in warning
+    assert NO in warning
+
+
+def test_the_collapse_threshold_is_a_cliff_not_a_slope():
+    """19 of 20 is 95% and flagged; 18 of 20 is 90% and is merely lopsided."""
+    at_threshold = [record(i, NO, NO if i < 19 else GOOD) for i in range(20)]
+    below = [record(i, NO, NO if i < 18 else GOOD) for i in range(20)]
+
+    assert collapse_warning(summarise_records(at_threshold)) is not None
+    assert collapse_warning(summarise_records(below)) is None
+
+
+def test_a_healthy_spread_of_predictions_is_not_flagged():
+    mixed = [record(0, GOOD, GOOD), record(1, NO, NO), record(2, POTENTIAL, POTENTIAL)]
+
+    assert collapse_warning(summarise_records(mixed)) is None

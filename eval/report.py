@@ -145,6 +145,33 @@ def gate_diagnosis(records: Sequence[RowRecord]) -> GateDiagnosis:
     )
 
 
+COLLAPSE_SHARE = 0.95
+
+
+def collapse_warning(summary: RunSummary) -> str | None:
+    """Flag a system that answered almost every row with the same label.
+
+    A collapsed system is not a weak system, it is a broken one, and comparing
+    against it flatters whatever it is compared against. Spec section 7 wants the
+    rubric-in-prompt baseline to be genuinely hard to beat, so a collapse has to be
+    visible in the report rather than showing up as a low F1 that reads like a
+    result. Measured 2026-09-17: the first draft of that baseline's prompt told the
+    model that a missing must-have ruled out `Good Fit`, and it answered `No Fit` on
+    297 of 300 rows.
+    """
+    if not summary.scored:
+        return None
+    label, count = max(summary.predicted_mix.items(), key=lambda item: item[1])
+    share = count / summary.scored
+    if share < COLLAPSE_SHARE:
+        return None
+    return (
+        f"**Collapsed: {count} of {summary.scored} predictions ({share:.0%}) are "
+        f"`{label}`.** Treat this run as a broken system rather than a weak one; "
+        f"comparing against it flatters the other systems."
+    )
+
+
 def render_run(summary: RunSummary) -> str:
     """The markdown for one run: headline, per class, confusion, branches, cost."""
     lines = [
@@ -181,6 +208,9 @@ def render_run(summary: RunSummary) -> str:
         f"Evidence coverage (E1): **{summary.evidence_coverage:.3f}** of scored "
         f"criteria carry a verbatim CV span.",
     ]
+    warning = collapse_warning(summary)
+    if warning is not None:
+        lines += ["", warning]
     return "\n".join(lines)
 
 
