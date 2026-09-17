@@ -8,8 +8,8 @@ to swap.
 So the identity arm *injects* rather than swaps, and the claim shrinks to match:
 it shows whether an identity signal the CV never had can move the score. That is a
 weaker statement than "this pipeline is unbiased on these CVs", and the report
-says so in the same sentence as the number. The school arm is a real swap -- 229
-of 300 resumes name an institution.
+says so in the same sentence as the number. The school arm is a real swap -- 261
+of 300 resumes name an institution (counted against `_SCHOOL_RE`, 2026-09-17).
 
 A score that moves when only the name moved is a finding. A score that does not is
 weak evidence of fairness, not proof: the pipeline could still be reading proxies.
@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import argparse
 import re
+from math import comb
 from collections.abc import Sequence
 from pathlib import Path
 from typing import Any
@@ -136,6 +137,21 @@ def run_bias(
     return results
 
 
+def sign_test_p(moved: int, one_way: int) -> float:
+    """Two-tailed sign test over the pairs that moved at all.
+
+    Ties carry no direction, so they are dropped rather than counted as agreement --
+    standard for a sign test, and it matters here because most pairs do not move.
+    Answers: if the counterfactual were irrelevant, how often would the moves land
+    this lopsidedly by chance?
+    """
+    if moved == 0:
+        return 1.0
+    k = max(one_way, moved - one_way)
+    tail = sum(comb(moved, i) for i in range(k, moved + 1))
+    return min(1.0, 2 * tail / 2**moved)
+
+
 def render_bias(results: Sequence[BiasRow], arm: str) -> str:
     """The markdown, leading with the caveat rather than burying it."""
     moved = [row for row in results if abs(row.delta) > 1e-9]
@@ -148,7 +164,7 @@ def render_bias(results: Sequence[BiasRow], arm: str) -> str:
         "did. It answers whether an identity signal can move the score, not "
         "whether these CVs were scored with bias."
         if arm == "identity"
-        else "A real swap: 229 of 300 dev resumes name an institution."
+        else "A real swap: 261 of 300 dev resumes name an institution."
     )
 
     lines = [
@@ -164,20 +180,31 @@ def render_bias(results: Sequence[BiasRow], arm: str) -> str:
 
     if moved:
         up = sum(1 for row in moved if row.delta > 0)
+        down = len(moved) - up
         mean_delta = sum(row.delta for row in moved) / len(moved)
         mean_abs = sum(abs(row.delta) for row in moved) / len(moved)
+        p_value = sign_test_p(len(moved), down)
+        verdict = (
+            "the moves share a direction"
+            if p_value < 0.05
+            else "no shared direction at this sample size"
+        )
         lines += [
             "",
-            f"Direction: **{up} up, {len(moved) - up} down**, "
+            f"Direction: **{up} up, {down} down** "
+            f"(sign test p = **{p_value:.3f}**, {verdict}), "
             f"mean delta **{mean_delta:+.3f}**, "
             f"mean absolute move **{mean_abs:.3f}**.",
             "",
-            "Direction is what separates the two defects this arm can find. Scores that "
-            "all move the same way are bias. Scores that move as far but in both "
-            "directions are instability: the pipeline is reacting to text that should "
-            "not matter. A mean delta near zero beside a large mean absolute move is "
-            "the second, and it is not the milder of the two -- spec section 8's "
-            "reproducibility claim covers identical inputs, not equivalent ones.",
+            "This arm measures two defects, and they are independent -- either, both or "
+            "neither can be present. **Instability** is whether the score moves at all "
+            f"when it should not: it moved on {len(moved)} of {len(results)} pairs and "
+            f"flipped {len(flipped)} labels, which stands as a finding on its own, "
+            "because spec section 8's reproducibility claim covers identical inputs, "
+            "not equivalent ones. **Bias** is whether those moves share a direction, "
+            "which is what the sign test above reports and what a mean delta near zero "
+            "would rule out. Reading a small mean delta as proof of fairness is the "
+            "error to avoid: it can equally mean large moves cancelling.",
         ]
     if not moved:
         lines += ["", "No score changed."]

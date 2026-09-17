@@ -6,6 +6,7 @@ from eval.bias import (
     Identity,
     inject_identity,
     render_bias,
+    sign_test_p,
     swap_school,
 )
 
@@ -101,12 +102,20 @@ def test_a_bias_row_computes_its_own_deltas():
 
 
 def test_the_report_separates_a_biased_pipeline_from_an_unstable_one():
-    """Direction is the whole point of the arm.
+    """Direction and instability are independent defects; the report must not conflate them.
 
-    Scores that all move the same way are bias. Scores that move as much but in
-    both directions are instability, which is a different defect with a different
-    fix. Measured 2026-09-17: the school arm moved 15 of 50 scores, 7 up and 8
-    down, mean delta +0.006 and mean absolute delta 0.130 -- not bias.
+    Measured over all 261 eligible pairs on 2026-09-17, cold and warm runs identical:
+
+    - school:   72 of 261 moved, 46 down / 26 up, sign test p = 0.024, 24 labels
+      flipped. The moves share a direction -- swapping MIT for Kabul Polytechnic
+      lowers the score more often than chance allows.
+    - identity: 71 of 261 moved, 33 down / 38 up, sign test p = 0.635, 21 labels
+      flipped. Instability of the same size, with no shared direction.
+
+    An earlier version of this docstring cited "15 of 50, 7 up and 8 down, mean
+    delta +0.006 -- not bias". Those figures matched no completed run; the n=50
+    school run that did complete gave 11 down / 4 up. At n=50 the sign test had
+    power 0.40, so its p = 0.119 was underpowered, not evidence of fairness.
     """
     rows = [
         BiasRow(row_index=0, arm="school", variant_a="A", variant_b="B",
@@ -120,3 +129,45 @@ def test_the_report_separates_a_biased_pipeline_from_an_unstable_one():
     assert "1 up" in text and "1 down" in text
     assert "+0.000" in text          # mean delta: the two cancel
     assert "0.200" in text           # mean absolute move: they do not
+
+
+def test_a_lopsided_arm_is_reported_as_directional():
+    """A small mean delta must not be readable as fairness when the moves agree.
+
+    These nine rows each move +0.10, so mean delta is small in absolute terms but
+    every move points the same way. The report must say so rather than let the
+    magnitude speak for the direction.
+    """
+    rows = [
+        BiasRow(row_index=i, arm="school", variant_a="A", variant_b="B",
+                score_a=0.40, score_b=0.50, label_a="Potential Fit", label_b="Potential Fit")
+        for i in range(9)
+    ]
+
+    text = render_bias(rows, "school")
+
+    assert "9 up, 0 down" in text
+    assert "the moves share a direction" in text
+    assert "p = **0.004**" in text
+
+
+def test_a_balanced_arm_is_not_reported_as_directional():
+    """The mirror case: equal moves both ways must not be called bias."""
+    rows = [
+        BiasRow(row_index=i, arm="identity", variant_a="A", variant_b="B",
+                score_a=0.40, score_b=0.50 if i % 2 else 0.30,
+                label_a="Potential Fit", label_b="Potential Fit")
+        for i in range(10)
+    ]
+
+    text = render_bias(rows, "identity")
+
+    assert "no shared direction at this sample size" in text
+
+
+def test_the_sign_test_drops_ties_rather_than_counting_them_as_agreement():
+    """Ties carry no direction. Counting them would dilute a real effect to nothing."""
+    assert sign_test_p(0, 0) == 1.0
+    assert sign_test_p(72, 46) == pytest.approx(0.024, abs=0.001)
+    assert sign_test_p(71, 33) == pytest.approx(0.635, abs=0.001)
+    assert sign_test_p(10, 5) == pytest.approx(1.0)
