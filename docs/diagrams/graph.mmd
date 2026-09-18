@@ -1,0 +1,43 @@
+Ta---
+config:
+  flowchart:
+    curve: linear
+---
+graph TD;
+	__start__([<p>__start__</p>]):::first
+	ingest(ingest)
+	guard(guard)
+	quarantine(quarantine)
+	extract(extract)
+	repair(repair)
+	load_rubric(load_rubric)
+	must_have_check(must_have_check)
+	reject_fast(reject_fast)
+	score_criteria(score_criteria)
+	aggregate(aggregate)
+	deep_review(deep_review)
+	decide(decide)
+	rank(rank)
+	__end__([<p>__end__</p>]):::last
+	__start__ --> ingest;
+	aggregate -.-> decide;
+	aggregate -.-> deep_review;
+	decide --> rank;
+	deep_review --> decide;
+	extract -.-> load_rubric;
+	extract -.-> repair;
+	guard -.-> extract;
+	guard -.-> quarantine;
+	ingest --> guard;
+	load_rubric --> must_have_check;
+	must_have_check -.-> reject_fast;
+	must_have_check -.-> score_criteria;
+	repair -.-> load_rubric;
+	score_criteria --> aggregate;
+	quarantine --> __end__;
+	rank --> __end__;
+	reject_fast --> __end__;
+	repair -.-> repair;
+	classDef default fill:#f2f0ff,line-height:1.2
+	classDef first fill-opacity:0
+	classDef last fill:#bfb6fc

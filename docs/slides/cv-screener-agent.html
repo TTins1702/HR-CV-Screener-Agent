@@ -1,0 +1,1804 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CV_SCREENER_AGENT — Sàng lọc CV có truy vết bằng chứng</title>
+
+<!-- Fonts: Google Fonts khi có mạng; fallback hệ thống để file chạy được offline. -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800&family=Nunito:wght@400;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+
+<style>
+/* ===========================================
+   1. THEME TOKENS — Swiss Modern
+   Đổi bảng này là đổi toàn bộ diện mạo bộ slide.
+   =========================================== */
+:root{
+    /* Bề mặt & mực */
+    --stage-bg:#d8d8d3;              /* vùng letterbox quanh sân khấu */
+    --slide-bg:#ffffff;
+    --ink:#0d0d0d;
+    --ink-2:#3c3c3a;
+    --ink-3:#6e6e6a;
+    --rule:#0d0d0d;
+    --grid:#e8e8e4;
+    --panel:#f4f4f1;
+    --panel-2:#ebebe6;
+
+    /* Accent Bauhaus */
+    --red:#ff3300;
+    --red-deep:#c52700;
+    --blue:#1f4fd8;
+    --ochre:#a68200;
+    --magenta:#c0007a;
+
+    /* Bảng màu categorical ĐÃ VALIDATE (validate_palette.js, light mode: PASS 5/5)
+       agent / baseline_naive / baseline_rubric / baseline_tfidf */
+    --cat-1:#ff3300;
+    --cat-2:#1f4fd8;
+    --cat-3:#a68200;
+    --cat-4:#c0007a;
+
+    /* Typography — thiết kế ở khổ 1920×1080 */
+    --font-display:'Archivo','Helvetica Neue',Helvetica,Arial,sans-serif;
+    --font-body:'Nunito','Segoe UI',Helvetica,Arial,sans-serif;
+    --font-mono:'IBM Plex Mono','Consolas','Courier New',monospace;
+
+    --pad-x:88px;
+    --ease:cubic-bezier(0.16,1,0.3,1);
+    --dur:0.55s;
+}
+
+*{margin:0;padding:0;box-sizing:border-box;}
+
+/* ===========================================
+   2. FIXED 16:9 STAGE — viewport-base.css
+   BẮT BUỘC giữ nguyên. Slide vẽ ở 1920×1080,
+   cả sân khấu được scale bằng một transform.
+   =========================================== */
+
+/* 1. Lock the browser viewport */
+html,
+body {
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    overflow: hidden;
+    background: var(--stage-bg, #000);
+}
+
+/* 2. Full-window deck viewport */
+.deck-viewport {
+    position: fixed;
+    inset: 0;
+    overflow: hidden;
+    background: var(--stage-bg, #000);
+}
+
+/* 3. Fixed 16:9 design canvas.
+   JavaScript sets transform: translate(...) scale(...). */
+.deck-stage {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 1920px;
+    height: 1080px;
+    overflow: hidden;
+    transform-origin: 0 0;
+    background: var(--slide-bg, #fff);
+}
+
+/* 4. Slides stack inside the fixed stage.
+   Content must be laid out at 1920×1080, not reflowed per device. */
+.slide {
+    position: absolute;
+    inset: 0;
+    width: 1920px;
+    height: 1080px;
+    overflow: hidden;
+    display: block;
+    visibility: hidden;
+    opacity: 0;
+    pointer-events: none;
+    background: var(--slide-bg, #fff);
+}
+
+.slide.active,
+.slide.visible {
+    visibility: visible;
+    opacity: 1;
+    pointer-events: auto;
+    z-index: 1;
+}
+
+/* 5. Keep media inside authored slide bounds */
+img,
+video,
+canvas,
+svg {
+    max-width: 100%;
+    max-height: 100%;
+}
+
+/* 6. Presentation chrome stays outside the slide design system */
+.deck-controls {
+    position: fixed;
+    left: 50%;
+    bottom: 22px;
+    transform: translateX(-50%);
+    z-index: 1000;
+}
+
+/* 7. Print one fixed-size slide per page */
+@media print {
+    html,
+    body {
+        width: 1920px;
+        height: auto;
+        overflow: visible;
+        background: #fff;
+    }
+
+    .deck-viewport {
+        position: static;
+        overflow: visible;
+        background: #fff;
+    }
+
+    .deck-stage {
+        position: static;
+        width: auto;
+        height: auto;
+        transform: none !important;
+        background: none;
+    }
+
+    .slide {
+        position: relative;
+        display: block !important;
+        visibility: visible !important;
+        opacity: 1 !important;
+        pointer-events: auto !important;
+        width: 1920px;
+        height: 1080px;
+        break-after: page;
+        page-break-after: always;
+    }
+
+    .slide:last-child {
+        break-after: auto;
+        page-break-after: auto;
+    }
+
+    .deck-controls {
+        display: none !important;
+    }
+}
+
+/* 8. Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        transition-duration: 0.2s !important;
+    }
+}
+
+/* ===========================================
+   3. LƯỚI NỀN — dấu hiệu Swiss: lưới nhìn thấy được
+   =========================================== */
+.slide::before{
+    content:"";
+    position:absolute; inset:0;
+    background-image:
+        linear-gradient(to right, var(--grid) 1px, transparent 1px);
+    background-size:152px 100%;
+    background-position:88px 0;
+    pointer-events:none;
+    z-index:0;
+}
+.slide > *{position:relative; z-index:1;}
+
+/* ===========================================
+   4. KHUNG SLIDE: head / body / strip / foot
+   =========================================== */
+.slide-head{position:absolute; top:56px; left:var(--pad-x); right:var(--pad-x);}
+.kicker{
+    font-family:var(--font-mono); font-size:19px; font-weight:600;
+    letter-spacing:.16em; text-transform:uppercase; color:var(--red);
+    display:flex; gap:18px; align-items:center;
+}
+.kicker .bar{display:inline-block; width:56px; height:6px; background:var(--red);}
+h2.vn{
+    font-family:var(--font-display); font-weight:800; font-size:56px;
+    line-height:1.04; letter-spacing:-0.015em; color:var(--ink); margin-top:14px;
+    max-width:1560px;
+}
+.en{
+    font-family:var(--font-body); font-weight:600; font-size:25px;
+    color:var(--ink-3); margin-top:8px; letter-spacing:.005em;
+}
+.head-rule{height:3px; background:var(--rule); margin-top:18px;}
+
+.slide-body{
+    position:absolute; top:246px; left:var(--pad-x); right:var(--pad-x); bottom:118px;
+}
+
+.slide-foot{
+    position:absolute; left:var(--pad-x); right:var(--pad-x); bottom:38px;
+    display:flex; justify-content:space-between; align-items:flex-end;
+    border-top:1px solid var(--grid); padding-top:12px;
+}
+.src{
+    font-family:var(--font-mono); font-size:17px; color:var(--ink-3);
+    line-height:1.45; max-width:1500px;
+}
+.src b{color:var(--ink-2); font-weight:600;}
+.pageno{font-family:var(--font-display); font-weight:800; font-size:26px; color:var(--ink);}
+.pageno span{color:var(--ink-3); font-weight:600; font-size:18px;}
+
+/* ===========================================
+   5. THÀNH PHẦN NỘI DUNG
+   =========================================== */
+ul.points{list-style:none;}
+ul.points li{
+    font-family:var(--font-body); font-size:27px; line-height:1.34; color:var(--ink-2);
+    padding-left:34px; position:relative; margin-bottom:19px; max-width:1500px;
+}
+ul.points li::before{
+    content:""; position:absolute; left:0; top:13px;
+    width:16px; height:16px; background:var(--red);
+}
+ul.points li b{color:var(--ink); font-weight:700;}
+ul.points li code, code.mono{font-family:var(--font-mono); font-size:.92em; background:var(--panel-2); padding:1px 6px;}
+.mono{font-family:var(--font-mono);}
+
+.quote-block{
+    border-left:8px solid var(--ink); background:var(--panel); padding:26px 32px;
+    font-family:var(--font-body); font-size:25px; line-height:1.42; color:var(--ink);
+}
+.quote-block .cite{display:block; margin-top:14px; font-family:var(--font-mono); font-size:17px; color:var(--ink-3);}
+
+.philosophy{
+    background:var(--ink); color:#fff; padding:20px 30px;
+    font-family:var(--font-display); font-weight:800; font-size:31px; letter-spacing:-0.01em;
+}
+.philosophy span{color:var(--red);}
+
+table.swiss{border-collapse:collapse; width:100%; font-family:var(--font-body);}
+table.swiss th{
+    font-family:var(--font-display); font-weight:700; font-size:19px; letter-spacing:.07em;
+    text-transform:uppercase; color:var(--ink); text-align:left;
+    border-bottom:3px solid var(--ink); padding:10px 14px;
+}
+table.swiss td{
+    font-size:22px; color:var(--ink-2); padding:12px 14px; vertical-align:top;
+    border-bottom:1px solid var(--grid); line-height:1.32;
+}
+table.swiss td.mono, table.swiss th.num{font-family:var(--font-mono);}
+table.swiss td.num, table.swiss th.num{text-align:right; font-family:var(--font-mono);}
+table.swiss tr.hero td{background:#fff5f2; color:var(--ink); font-weight:700;}
+table.swiss code{font-family:var(--font-mono); font-size:.94em;}
+
+.callout{
+    border:3px solid var(--red); padding:18px 22px;
+    font-family:var(--font-body); font-size:23px; line-height:1.34; color:var(--ink);
+}
+.callout .lbl{
+    display:block; font-family:var(--font-display); font-weight:800; font-size:15px;
+    letter-spacing:.13em; text-transform:uppercase; color:var(--red); margin-bottom:8px;
+}
+.warn-line{
+    background:var(--ink); color:#fff; font-family:var(--font-body); font-weight:700;
+    font-size:24px; padding:14px 20px; line-height:1.3;
+}
+.warn-line em{font-style:normal; color:#ff7a55;}
+
+/* Thẻ "phản biện — câu trả lời" (slide 9).
+   Giữ nguyên con số bất lợi ở dòng .obj, rồi trả lời nó ngay bên dưới. */
+.ans{
+    background:var(--panel); border-left:8px solid var(--red);
+    padding:13px 20px 15px;
+}
+.ans .obj{
+    font-family:var(--font-mono); font-size:16px; color:var(--ink-3);
+    line-height:1.32; margin-bottom:8px;
+}
+.ans .obj b{
+    color:var(--red-deep); font-weight:600; letter-spacing:.1em;
+    text-transform:uppercase; font-size:13px; margin-right:8px;
+}
+.ans .ttl{
+    font-family:var(--font-display); font-weight:800; font-size:23px;
+    line-height:1.16; letter-spacing:-0.01em; color:var(--ink); margin-bottom:8px;
+}
+.ans .ev{
+    font-family:var(--font-body); font-size:18px; line-height:1.32; color:var(--ink-2);
+}
+.ans .ev b{color:var(--ink); font-weight:700;}
+.ans .ex{
+    margin-top:8px; padding-top:8px; border-top:1px solid #dcdcd6;
+    font-family:var(--font-mono); font-size:15px; line-height:1.38; color:var(--ink-2);
+}
+.ans .ex b{color:var(--red-deep); font-weight:600;}
+.ans .ex i{font-style:normal; color:var(--ink-3);}
+
+figure.asset-slot{margin:0; width:100%;}
+figure.asset-slot svg{display:block; width:100%; height:auto;}
+figure.asset-slot figcaption{
+    font-family:var(--font-mono); font-size:16px; color:var(--ink-3);
+    margin-top:10px; line-height:1.4;
+}
+
+/* SVG typography dùng chung */
+.svg-node{font-family:'IBM Plex Mono','Consolas',monospace; font-size:16px; fill:#0d0d0d;}
+.svg-lab{font-family:'Nunito','Segoe UI',sans-serif; font-size:16px; fill:#3c3c3a;}
+.svg-num{font-family:'IBM Plex Mono','Consolas',monospace; font-size:16px; fill:#0d0d0d;}
+.svg-h{font-family:'Archivo','Helvetica Neue',sans-serif; font-weight:800; font-size:17px; fill:#0d0d0d; letter-spacing:.06em;}
+.svg-pct{font-family:'IBM Plex Mono','Consolas',monospace; font-size:16px; font-weight:600; fill:#c52700;}
+
+/* ===========================================
+   6. SLIDE 1 — trang bìa
+   =========================================== */
+.title-slide{background:var(--slide-bg);}
+.title-slide .block{position:absolute; left:var(--pad-x); top:196px; right:var(--pad-x);}
+.t-eyebrow{
+    font-family:var(--font-mono); font-size:22px; letter-spacing:.3em; text-transform:uppercase;
+    color:var(--red); font-weight:600;
+}
+.t-main{
+    font-family:var(--font-display); font-weight:800; font-size:150px; line-height:0.92;
+    letter-spacing:-0.035em; color:var(--ink); margin-top:20px;
+}
+.t-sub{font-family:var(--font-body); font-weight:700; font-size:37px; color:var(--ink); margin-top:28px;}
+.t-sub-en{font-family:var(--font-body); font-weight:400; font-size:27px; color:var(--ink-3); margin-top:6px;}
+.t-anchor{
+    margin-top:44px; border-top:3px solid var(--ink); border-bottom:1px solid var(--grid);
+    padding:18px 0; display:flex; gap:0; flex-wrap:wrap;
+}
+.t-anchor div{
+    font-family:var(--font-mono); font-size:21px; color:var(--ink); padding:0 26px;
+    border-left:1px solid var(--grid);
+}
+.t-anchor div:first-child{padding-left:0; border-left:0;}
+.t-anchor b{color:var(--red-deep);}
+.t-by{
+    position:absolute; left:var(--pad-x); bottom:96px;
+    font-family:var(--font-mono); font-size:24px; color:var(--ink-2);
+}
+.t-mark{position:absolute; right:88px; top:150px; width:230px; height:230px;}
+
+/* ===========================================
+   7. TIỆN ÍCH BỐ CỤC
+   =========================================== */
+.row{display:flex; gap:34px;}
+.col{flex:1; min-width:0;}
+.stack{display:flex; flex-direction:column; gap:18px;}
+.grow{flex:1;}
+.two-col-head{
+    font-family:var(--font-display); font-weight:800; font-size:23px; letter-spacing:.06em;
+    text-transform:uppercase; color:var(--ink); border-bottom:3px solid var(--ink);
+    padding-bottom:8px; margin-bottom:16px;
+}
+.two-col-head span{color:var(--red);}
+ol.lessons{list-style:none; counter-reset:l;}
+ol.lessons li{
+    counter-increment:l; font-family:var(--font-body); font-size:21px; line-height:1.3;
+    color:var(--ink-2); padding-left:44px; position:relative; margin-bottom:13px;
+}
+ol.lessons li::before{
+    content:counter(l); position:absolute; left:0; top:1px;
+    font-family:var(--font-display); font-weight:800; font-size:19px; color:#fff;
+    background:var(--red); width:28px; height:28px; display:grid; place-items:center;
+}
+ol.lessons li b{color:var(--ink); font-weight:700;}
+.closing-quote{
+    background:var(--red); color:#fff; padding:22px 28px; margin-top:6px;
+    font-family:var(--font-display); font-weight:800; font-size:27px; line-height:1.24;
+}
+
+/* ===========================================
+   7b. DEMO — danh sách ca demo & dải trạng thái
+   .case      : một ca demo, kèm nhánh nó bật trong graph
+   .watch     : "nhìn vào đâu trên màn hình"
+   .out-head  : tiêu đề nhỏ dùng chung
+   =========================================== */
+.out-head{
+    font-family:var(--font-display); font-weight:800; font-size:16px;
+    letter-spacing:.11em; text-transform:uppercase; color:var(--ink);
+    border-bottom:3px solid var(--ink); padding-bottom:9px; margin-bottom:16px;
+}
+.case{
+    display:flex; gap:18px; align-items:flex-start;
+    padding:21px 0; border-bottom:1px solid var(--grid);
+}
+.case .n{
+    flex:none; width:44px; height:44px; background:var(--ink); color:#fff;
+    font-family:var(--font-display); font-weight:800; font-size:23px;
+    display:grid; place-items:center;
+}
+.case.edge .n{background:var(--red);}
+.case .t{font-family:var(--font-body); font-weight:700; font-size:26px;
+    line-height:1.22; color:var(--ink);}
+.case .b{font-family:var(--font-mono); font-size:19px; color:var(--red-deep); margin-top:7px;}
+.case .b i{font-style:normal; color:var(--ink-3);}
+
+.watch{
+    display:flex; gap:12px; align-items:flex-start;
+    font-family:var(--font-body); font-size:21px; line-height:1.3; color:var(--ink-2);
+    padding:15px 0; border-bottom:1px solid var(--grid);
+}
+.watch .tag{
+    flex:none; font-family:var(--font-mono); font-size:15px; color:#fff;
+    background:var(--ink); padding:3px 9px; margin-top:2px;
+}
+.watch b{color:var(--ink); font-weight:700;}
+
+.state-line{
+    font-family:var(--font-mono); font-size:19px; line-height:1.5;
+    color:var(--ink-2);
+    background:var(--panel); padding:16px 20px; border-left:8px solid var(--red);
+}
+.state-line em{font-style:normal; color:var(--red-deep); font-weight:600;}
+
+/* ===========================================
+   8. ANIMATION — một lượt reveal khi vào slide
+   =========================================== */
+.reveal{opacity:0; transform:translateY(24px);
+    transition:opacity var(--dur) var(--ease), transform var(--dur) var(--ease);}
+.slide.visible .reveal{opacity:1; transform:translateY(0);}
+.slide.visible .reveal:nth-child(1){transition-delay:.05s;}
+.slide.visible .reveal:nth-child(2){transition-delay:.12s;}
+.slide.visible .reveal:nth-child(3){transition-delay:.19s;}
+.slide.visible .reveal:nth-child(4){transition-delay:.26s;}
+.slide.visible .reveal:nth-child(5){transition-delay:.33s;}
+
+/* ===========================================
+   9. CHROME: số slide, speaker notes, edit mode
+   =========================================== */
+.notes{display:none;}
+#notesPanel{
+    position:fixed; left:0; right:0; bottom:0; max-height:36vh; overflow:auto;
+    background:#0d0d0d; color:#f2f2ef; z-index:9000; padding:20px 30px 24px;
+    font-family:'Nunito','Segoe UI',sans-serif; font-size:17px; line-height:1.5;
+    border-top:5px solid #ff3300; display:none;
+}
+#notesPanel.on{display:block;}
+#notesPanel h4{
+    font-family:'Archivo',sans-serif; font-size:13px; letter-spacing:.2em;
+    text-transform:uppercase; color:#ff7a55; margin-bottom:8px;
+}
+#notesPanel code{font-family:'IBM Plex Mono',monospace; background:#26261f; padding:1px 5px;}
+#hint{
+    position:fixed; right:16px; bottom:14px; z-index:9500;
+    font-family:'IBM Plex Mono',monospace; font-size:12px; color:#6e6e6a;
+}
+.edit-hotzone{position:fixed; top:0; left:0; width:80px; height:80px; z-index:10000; cursor:pointer;}
+.edit-toggle{
+    position:fixed; top:14px; left:14px; z-index:10001; opacity:0; pointer-events:none;
+    transition:opacity .3s ease; background:#0d0d0d; color:#fff; border:0;
+    width:44px; height:44px; font-size:19px; cursor:pointer;
+}
+.edit-toggle.show,.edit-toggle.active{opacity:1; pointer-events:auto;}
+.edit-toggle.active{background:var(--red);}
+body.editing [contenteditable="true"]{outline:2px dashed var(--red); outline-offset:3px;}
+@media print{ #notesPanel,#hint,.edit-toggle,.edit-hotzone{display:none !important;} }
+</style>
+</head>
+<body>
+<div class="deck-viewport">
+<main class="deck-stage" id="deckStage">
+
+<!-- ======================================================================
+     SLIDE 1 — TRANG BÌA
+     ====================================================================== -->
+<section class="slide title-slide active" aria-label="Trang bìa">
+    <svg class="t-mark" viewBox="0 0 230 230" aria-hidden="true">
+        <rect x="0" y="0" width="230" height="230" fill="#f4f4f1"/>
+        <circle cx="115" cy="76" r="60" fill="#ff3300"/>
+        <rect x="55" y="136" width="120" height="14" fill="#0d0d0d"/>
+        <rect x="55" y="162" width="78" height="14" fill="#0d0d0d"/>
+        <rect x="55" y="188" width="42" height="14" fill="#1f4fd8"/>
+    </svg>
+
+    <div class="block">
+        <div class="t-eyebrow reveal">Báo cáo nghiên cứu · Research report</div>
+        <h1 class="t-main reveal">AGENT:<br>CV_SCREENER_AGENT</h1>
+        <p class="t-sub reveal">Sàng lọc CV có truy vết bằng chứng</p>
+        <p class="t-sub-en reveal">Evidence-linked CV screening on a LangGraph state machine</p>
+        <div class="t-anchor reveal">
+            <div><b>13</b> node</div>
+            <div><b>4</b> conditional edge</div>
+            <div><b>5</b> tool tất định</div>
+            <div><b>500</b> hồ sơ · chạy MỘT lần</div>
+            <div>evidence coverage <b>0.486</b></div>
+        </div>
+    </div>
+
+    <div class="t-by">{{TÊN NGƯỜI TRÌNH BÀY}} · {{NGÀY}}</div>
+
+    <div class="slide-foot">
+        <div class="src">nguồn: <b>docs/measurements/test_shipped.md</b> · n=500 · <b>docs/diagrams/graph.mmd</b> · <b>docs/spec/2026-09-07-hr-cv-screener-spec.md</b> §5</div>
+        <div class="pageno">01<span> / 12</span></div>
+    </div>
+
+    <div class="notes">
+        <p>Dòng số liệu dưới tiêu đề là mỏ neo của cả bài: mọi con số xuất hiện sau đó đều quay lại được một trong năm mục này. Bài nói 20–25 phút, chia ba phần: vì sao bài toán này bị luật xếp vào nhóm nguy cơ cao (slide 2–3), hệ thống đã dựng (slide 4–8), và hệ thống sai ở đâu (slide 9–12).</p>
+        <p><b>Phản biện dễ nhất:</b> "0.486 là thấp." Đúng, và đó là con số tôi sẽ tự đưa lên slide 8 trước khi ai kịp hỏi — đối chứng là cả ba baseline đều 0.000, vì một lần gọi LLM không sinh ra câu trích dẫn nào để mà chỉ vào.</p>
+    </div>
+</section>
+
+<!-- ======================================================================
+     SLIDE 2 — BỐI CẢNH 1/3: LUẬT
+     ====================================================================== -->
+<section class="slide" aria-label="Bối cảnh 1/3 — quy định">
+    <div class="slide-head">
+        <div class="kicker"><span class="bar"></span>Bối cảnh</div>
+        <h2 class="vn">Luật đã xếp việc này vào nhóm nguy cơ cao</h2>
+        <div class="en">Regulation already classes this as high-risk</div>
+        <div class="head-rule"></div>
+    </div>
+
+    <div class="slide-body">
+        <div class="row">
+            <div class="col" style="flex:1.12;">
+                <div class="quote-block reveal" style="font-size:30px; padding:34px 38px;">
+                    “4. Employment, workers management and access to self-employment:<br>
+                    (a) AI systems intended to be used for the recruitment or selection of natural
+                    persons, notably to place targeted job advertisements, to analyse and filter job
+                    applications, and to evaluate candidates;”
+                    <span class="cite">EU AI Act — Annex III, Point 4(a)</span>
+                </div>
+            </div>
+            <div class="col reveal" style="flex:0.88;">
+                <div class="two-col-head">High-Risk thì <span>bắt buộc</span></div>
+                <ul class="points" style="margin-top:22px;">
+                    <li style="font-size:31px; margin-bottom:30px;"><b>Article 12</b> — ghi nhật ký, truy vết</li>
+                    <li style="font-size:31px; margin-bottom:30px;"><b>Article 13</b> — minh bạch, giải trình được</li>
+                    <li style="font-size:31px; margin-bottom:0;"><b>Article 14</b> — giám sát của con người</li>
+                </ul>
+            </div>
+        </div>
+        <div class="warn-line reveal" style="margin-top:74px; font-size:30px; padding:22px 28px;">
+            Một lần gọi LLM chấm điểm là <em>hộp đen</em>: không có điều nào trong ba.
+        </div>
+    </div>
+
+    <div class="slide-foot">
+        <div class="src">nguồn: <b>EU AI Act — Annex III, Point 4(a)</b></div>
+        <div class="pageno">02<span> / 12</span></div>
+    </div>
+
+    <div class="notes">
+        <p>Đây là lập luận về <b>lớp hệ thống</b> mà Annex III 4(a) xếp vào, không phải tuyên bố đã tuân thủ. Rơi vào lớp đó thì Article 12, 13, 14 là yêu cầu bắt buộc chứ không phải tính năng tùy chọn.</p>
+        <p><b>Phản biện dễ nhất — "đã làm conformity assessment chưa?"</b> Chưa. Đây là demo nghiên cứu. Đóng góp của chúng tôi là chỉ ra <b>một cách đo được</b> cho yêu cầu truy vết: evidence coverage E1.</p>
+        <p>Một lần gọi LLM không ghi được nhật ký từng bước (Art. 12), không giải trình được vì sao ra điểm đó (Art. 13), và không cho người giám sát chỗ nào để can thiệp (Art. 14).</p>
+    </div>
+</section>
+
+<!-- ======================================================================
+     SLIDE 4 — BỐI CẢNH 3/3: BỐN ĐIỂM NGHẼN (slide bản lề)
+     ====================================================================== -->
+<!-- ======================================================================
+     SLIDE 4 — Ý TƯỞNG: TỪ YÊU CẦU BẮT BUỘC ĐẾN MỘT AGENT
+     ====================================================================== -->
+<section class="slide" aria-label="Ý tưởng — từ yêu cầu bắt buộc đến một agent">
+    <div class="slide-head">
+        <div class="kicker"><span class="bar"></span>Ý tưởng</div>
+        <h2 class="vn">Từ một yêu cầu bắt buộc đến ý tưởng một agent</h2>
+        <div class="en">From a legal requirement to the idea of an agent</div>
+        <div class="head-rule"></div>
+    </div>
+
+    <div class="slide-body">
+        <figure class="asset-slot reveal" data-asset="01-blackbox-vs-agent.png">
+            <svg viewBox="0 0 1560 372" role="img" aria-label="Một lần gọi LLM so với sàng lọc tách thành chuỗi bước quan sát được">
+                <defs>
+                    <marker id="a-i" viewBox="0 0 10 10" refX="9.5" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                        <path d="M0,0 L10,5 L0,10 z" fill="#0d0d0d"/></marker>
+                </defs>
+
+                <!-- ============ A · MỘT LẦN GỌI LLM ============ -->
+                <text x="0" y="16" font-family="'Archivo',sans-serif" font-weight="800" font-size="16" fill="#0d0d0d" letter-spacing="1">A · HÔM NAY: MỘT LẦN GỌI LLM</text>
+                <rect x="0" y="36" width="230" height="66" fill="#fff" stroke="#0d0d0d" stroke-width="2.5"/>
+                <text x="115" y="76" font-family="'Nunito',sans-serif" font-size="20" fill="#0d0d0d" text-anchor="middle">CV + JD</text>
+                <line x1="240" y1="69" x2="292" y2="69" stroke="#0d0d0d" stroke-width="2.5" marker-end="url(#a-i)"/>
+                <rect x="300" y="36" width="560" height="66" fill="#0d0d0d"/>
+                <text x="580" y="76" font-family="'Archivo',sans-serif" font-weight="800" font-size="22" fill="#ffffff" text-anchor="middle">HỘP ĐEN</text>
+                <line x1="870" y1="69" x2="922" y2="69" stroke="#0d0d0d" stroke-width="2.5" marker-end="url(#a-i)"/>
+                <rect x="930" y="36" width="230" height="66" fill="#fff" stroke="#0d0d0d" stroke-width="2.5"/>
+                <text x="1045" y="76" font-family="'Nunito',sans-serif" font-size="20" fill="#0d0d0d" text-anchor="middle">một nhãn</text>
+                <text x="1190" y="62" font-family="'Nunito',sans-serif" font-size="19" fill="#c52700">✕ không nhật ký từng bước</text>
+                <text x="1190" y="88" font-family="'Nunito',sans-serif" font-size="19" fill="#c52700">✕ không trích dẫn, không chỗ can thiệp</text>
+
+                <line x1="0" y1="140" x2="1560" y2="140" stroke="#e8e8e4" stroke-width="2"/>
+
+                <!-- ============ B · TÁCH THÀNH CHUỖI BƯỚC ============ -->
+                <text x="0" y="184" font-family="'Archivo',sans-serif" font-weight="800" font-size="16" fill="#ff3300" letter-spacing="1">B · Ý TƯỞNG: TÁCH THÀNH CHUỖI BƯỚC QUAN SÁT ĐƯỢC</text>
+                <rect x="0" y="206" width="190" height="66" fill="#fff" stroke="#0d0d0d" stroke-width="2.5"/>
+                <text x="95" y="246" font-family="'Nunito',sans-serif" font-size="20" fill="#0d0d0d" text-anchor="middle">CV + JD</text>
+                <line x1="200" y1="239" x2="240" y2="239" stroke="#0d0d0d" stroke-width="2.5" marker-end="url(#a-i)"/>
+
+                <rect x="248" y="206" width="160" height="66" fill="#fff1ec" stroke="#ff3300" stroke-width="2.5"/>
+                <text x="328" y="246" font-family="'Nunito',sans-serif" font-size="20" fill="#0d0d0d" text-anchor="middle">bước 1</text>
+                <line x1="418" y1="239" x2="458" y2="239" stroke="#ff3300" stroke-width="2.5" marker-end="url(#a-i)"/>
+                <rect x="466" y="206" width="160" height="66" fill="#fff1ec" stroke="#ff3300" stroke-width="2.5"/>
+                <text x="546" y="246" font-family="'Nunito',sans-serif" font-size="20" fill="#0d0d0d" text-anchor="middle">bước 2</text>
+                <line x1="636" y1="239" x2="676" y2="239" stroke="#ff3300" stroke-width="2.5" marker-end="url(#a-i)"/>
+                <rect x="684" y="206" width="160" height="66" fill="#fff1ec" stroke="#ff3300" stroke-width="2.5"/>
+                <text x="764" y="246" font-family="'Nunito',sans-serif" font-size="20" fill="#0d0d0d" text-anchor="middle">bước 3</text>
+                <text x="878" y="248" font-family="'Nunito',sans-serif" font-size="24" fill="#6e6e6a">…</text>
+                <line x1="900" y1="239" x2="940" y2="239" stroke="#ff3300" stroke-width="2.5" marker-end="url(#a-i)"/>
+                <rect x="948" y="206" width="212" height="66" fill="#fff1ec" stroke="#ff3300" stroke-width="2.5"/>
+                <text x="1054" y="246" font-family="'Nunito',sans-serif" font-size="20" fill="#0d0d0d" text-anchor="middle">bước n</text>
+                <line x1="1170" y1="239" x2="1210" y2="239" stroke="#0d0d0d" stroke-width="2.5" marker-end="url(#a-i)"/>
+                <rect x="1218" y="206" width="342" height="66" fill="#0d0d0d"/>
+                <text x="1389" y="246" font-family="'Nunito',sans-serif" font-size="20" fill="#ffffff" text-anchor="middle">nhãn + scorecard có trích dẫn</text>
+
+                <!-- vạch log dưới mỗi bước -->
+                <g stroke="#ff3300" stroke-width="2">
+                    <line x1="328" y1="280" x2="328" y2="302"/>
+                    <line x1="546" y1="280" x2="546" y2="302"/>
+                    <line x1="764" y1="280" x2="764" y2="302"/>
+                    <line x1="1054" y1="280" x2="1054" y2="302"/>
+                </g>
+                <line x1="248" y1="302" x2="1160" y2="302" stroke="#ff3300" stroke-width="2"/>
+                <text x="248" y="330" font-family="'Nunito',sans-serif" font-size="19" fill="#0d0d0d">mỗi bước ghi lại: vào gì · ra gì · rẽ theo nhánh nào</text>
+                <text x="0" y="364" font-family="'Nunito',sans-serif" font-size="19" fill="#6e6e6a">Giải trình được là hệ quả của việc tách bước, không phải của việc chọn model tốt hơn.</text>
+            </svg>
+            <figcaption>Ý tưởng ở mức khái niệm — kiến trúc thật ở slide 4</figcaption>
+        </figure>
+
+        <div class="row reveal" style="margin-top:22px; gap:34px;">
+            <div class="col" style="flex:1.05;">
+                <ul class="points">
+                    <li style="font-size:24px;">Art. 12–14 đòi <b>nhật ký, giải trình, chỗ cho con người</b> can thiệp</li>
+                    <li style="font-size:24px;">Muốn giải trình thì quyết định phải <b>tách thành bước quan sát được</b></li>
+                    <li style="font-size:24px;">Mỗi điểm phải chỉ ra được <b>câu chữ trong CV</b> đã sinh ra nó</li>
+                </ul>
+            </div>
+            <div class="col" style="flex:0.95;">
+                <div class="callout" style="font-size:22px;">
+                    <span class="lbl">Hai mục tiêu sẽ được kiểm chứng</span>
+                    <b>E1</b> — mọi điểm số truy ngược được về câu chữ trong CV.<br>
+                    <b>E2</b> — agent nhiều bước <b>hơn gì</b> một lần gọi LLM, bằng số đo.
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="slide-foot">
+        <div class="src">nguồn: <b>EU AI Act — Annex III 4(a) → Art. 12–14</b> · <b>docs/spec/…-spec.md §1</b> (E1 / E2) · không có số đo trên slide này</div>
+        <div class="pageno">03<span> / 12</span></div>
+    </div>
+
+    <div class="notes">
+        <p>Đây là bản lề giữa bối cảnh và hệ thống: tôi <b>chưa</b> nói kiến trúc, chỉ nói ý tưởng rút ra từ slide 2. Nếu luật đòi nhật ký, giải trình và giám sát, thì một lần gọi LLM không đáp ứng được — không phải vì model yếu, mà vì <b>không có bước nào để mà ghi lại</b>. Giải trình được là hệ quả của việc tách bước.</p>
+        <p>“bước 1, 2, 3, n” ở đây cố ý để trống tên. Tên thật, số lượng thật và lưu lượng thật của từng nhánh nằm ở slide 4 — và tôi sẽ đo từng nhánh một, chứ không vẽ cho đẹp.</p>
+        <p><b>Phản biện dễ nhất:</b> “Tách bước thì tốn token hơn, được gì?” Đó đúng là câu hỏi E2 đặt ra, và tôi trả lời bằng số ở slide 9: hơn baseline mạnh nhất +0.04 macro-F1 với 2,5 lần token — tức là <b>không</b> thắng ở độ chính xác. Phần thắng nằm ở cột evidence coverage: 0.439 so với 0.000.</p>
+        <p>Nếu được hỏi vì sao không còn slide “bốn điểm nghẽn”: các ràng buộc kỹ thuật của dữ liệu thật (văn bản CV dính chữ, khoảng thời gian chồng lấn) được nói đúng chỗ hơn ở slide 6, nơi đã có tên tool để gắn vào.</p>
+    </div>
+</section>
+
+<!-- ======================================================================
+     SLIDE 5 — KIẾN TRÚC: GRAPH THẬT
+     ====================================================================== -->
+<!-- ======================================================================
+     SLIDE 4 — KIẾN TRÚC: GRAPH THẬT (nằm ngang, không số đo)
+     ====================================================================== -->
+<section class="slide" aria-label="Kiến trúc — state graph">
+    <div class="slide-head">
+        <div class="kicker"><span class="bar"></span>Kiến trúc 1 / 2</div>
+        <h2 class="vn">Cái graph thật, đúng như đã dựng</h2>
+        <div class="en">The state graph, as built</div>
+        <div class="head-rule"></div>
+    </div>
+
+    <div class="slide-body">
+        <figure class="asset-slot reveal" data-asset="02-graph-13-nodes.png">
+            <svg viewBox="0 0 1700 600" role="img" aria-label="Graph 13 node nằm ngang, bốn conditional edge có nhãn">
+                <defs>
+                    <marker id="g-dk" viewBox="0 0 10 10" refX="9.5" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                        <path d="M0,0 L10,5 L0,10 z" fill="#0d0d0d"/></marker>
+                    <marker id="g-bl" viewBox="0 0 10 10" refX="9.5" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                        <path d="M0,0 L10,5 L0,10 z" fill="#1f4fd8"/></marker>
+                    <marker id="g-rd" viewBox="0 0 10 10" refX="9.5" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                        <path d="M0,0 L10,5 L0,10 z" fill="#ff3300"/></marker>
+                </defs>
+
+                <!-- ============ CẠNH TUẦN TỰ (liền, đen) ============ -->
+                <g stroke="#0d0d0d" stroke-width="2.5" fill="none">
+                    <line x1="96"   y1="279" x2="128"  y2="279" marker-end="url(#g-dk)"/>
+                    <line x1="218"  y1="279" x2="268"  y2="279" marker-end="url(#g-dk)"/>
+                    <line x1="770"  y1="279" x2="820"  y2="279" marker-end="url(#g-dk)"/>
+                    <line x1="1226" y1="279" x2="1276" y2="279" marker-end="url(#g-dk)"/>
+                    <line x1="1564" y1="279" x2="1608" y2="279" marker-end="url(#g-dk)"/>
+                    <path d="M1394,86 L1523,86 L1523,250" marker-end="url(#g-dk)"/>
+                    <path d="M1647,308 L1647,471" marker-end="url(#g-dk)"/>
+                    <path d="M325,470 L325,505 L1582,505" marker-end="url(#g-dk)"/>
+                    <path d="M912,470 L912,505" />
+                </g>
+
+                <!-- ============ CONDITIONAL EDGE (đứt, xanh) ============ -->
+                <g stroke="#1f4fd8" stroke-width="2.5" fill="none" stroke-dasharray="8 5">
+                    <line x1="348" y1="279" x2="458"  y2="279" marker-end="url(#g-bl)"/>
+                    <line x1="558" y1="279" x2="632"  y2="279" marker-end="url(#g-bl)"/>
+                    <line x1="996" y1="279" x2="1060" y2="279" marker-end="url(#g-bl)"/>
+                    <line x1="1394" y1="279" x2="1474" y2="279" marker-end="url(#g-bl)"/>
+                    <path d="M512,250 L512,120" marker-end="url(#g-bl)"/>
+                    <path d="M1339,250 L1339,120" marker-end="url(#g-bl)"/>
+                    <path d="M558,86 L600,86 L600,196 L705,196 L705,250" marker-end="url(#g-bl)"/>
+                    <path d="M440,60 C436,20 512,20 508,56" marker-end="url(#g-bl)"/>
+                </g>
+
+                <!-- ============ NHÁNH THOÁT SỚM (đứt, đỏ) ============ -->
+                <g stroke="#ff3300" stroke-width="2.5" fill="none" stroke-dasharray="8 5">
+                    <path d="M312,308 L312,410" marker-end="url(#g-rd)"/>
+                    <path d="M912,308 L912,410" marker-end="url(#g-rd)"/>
+                </g>
+
+                <!-- ============ NHÃN CẠNH ============ -->
+                <g font-family="'Nunito',sans-serif" font-size="16" font-weight="700">
+                    <text x="403" y="266" fill="#1f4fd8" text-anchor="middle">Sạch / Hợp lệ</text>
+                    <text x="595" y="266" fill="#1f4fd8" text-anchor="middle">Hợp lệ</text>
+                    <text x="1028" y="266" fill="#1f4fd8" text-anchor="middle">Đạt</text>
+                    <text x="1434" y="266" fill="#1f4fd8" text-anchor="middle">Rõ ràng</text>
+                    <text x="498" y="182" fill="#1f4fd8" text-anchor="end">Thiếu date</text>
+                    <text x="1325" y="182" fill="#1f4fd8" text-anchor="end">Vùng xám</text>
+                    <text x="324" y="368" fill="#ff3300">Bẩn / Injection</text>
+                    <text x="924" y="368" fill="#ff3300">Thiếu Must-Have</text>
+                    <text x="474" y="26" fill="#1f4fd8" text-anchor="middle">Lặp lại · tối đa 2 lần</text>
+                </g>
+
+                <!-- ============ NODE: hàng trên ============ -->
+                <g>
+                    <rect x="440" y="56" width="118" height="54" rx="8" fill="#eaf0fd" stroke="#1f4fd8" stroke-width="2.5"/>
+                    <text class="svg-node" x="499" y="89" font-size="17" text-anchor="middle">repair</text>
+                    <rect x="1262" y="56" width="164" height="54" rx="8" fill="#eaf0fd" stroke="#1f4fd8" stroke-width="2.5"/>
+                    <text class="svg-node" x="1344" y="89" font-size="17" text-anchor="middle">deep_review</text>
+                </g>
+
+                <!-- ============ NODE: spine ============ -->
+                <g>
+                    <rect x="10"   y="252" width="86"  height="54" rx="27" fill="#0d0d0d"/>
+                    <text x="53"   y="285" font-family="'Archivo',sans-serif" font-weight="800" font-size="16" fill="#fff" text-anchor="middle">START</text>
+                    <rect x="128"  y="250" width="90"  height="58" rx="8" fill="#fff" stroke="#0d0d0d" stroke-width="2.5"/>
+                    <text class="svg-node" x="173"  y="286" font-size="17" text-anchor="middle">ingest</text>
+                    <rect x="268"  y="250" width="80"  height="58" rx="8" fill="#fff" stroke="#0d0d0d" stroke-width="2.5"/>
+                    <text class="svg-node" x="308"  y="286" font-size="17" text-anchor="middle">guard</text>
+                    <rect x="458"  y="250" width="100" height="58" rx="8" fill="#fff" stroke="#0d0d0d" stroke-width="2.5"/>
+                    <text class="svg-node" x="508"  y="286" font-size="17" text-anchor="middle">extract</text>
+                    <rect x="632"  y="250" width="138" height="58" rx="8" fill="#fff" stroke="#0d0d0d" stroke-width="2.5"/>
+                    <text class="svg-node" x="701"  y="286" font-size="17" text-anchor="middle">load_rubric</text>
+                    <rect x="820"  y="250" width="176" height="58" rx="8" fill="#fff" stroke="#0d0d0d" stroke-width="2.5"/>
+                    <text class="svg-node" x="908"  y="286" font-size="17" text-anchor="middle">must_have_check</text>
+                    <rect x="1060" y="250" width="166" height="58" rx="8" fill="#fff" stroke="#0d0d0d" stroke-width="2.5"/>
+                    <text class="svg-node" x="1143" y="286" font-size="17" text-anchor="middle">score_criteria</text>
+                    <rect x="1276" y="250" width="118" height="58" rx="8" fill="#fff" stroke="#0d0d0d" stroke-width="2.5"/>
+                    <text class="svg-node" x="1335" y="286" font-size="17" text-anchor="middle">aggregate</text>
+                    <rect x="1474" y="250" width="90"  height="58" rx="8" fill="#fff" stroke="#0d0d0d" stroke-width="2.5"/>
+                    <text class="svg-node" x="1519" y="286" font-size="17" text-anchor="middle">decide</text>
+                    <rect x="1608" y="250" width="78"  height="58" rx="8" fill="#fff" stroke="#0d0d0d" stroke-width="2.5"/>
+                    <text class="svg-node" x="1647" y="286" font-size="17" text-anchor="middle">rank</text>
+                </g>
+
+                <!-- ============ NODE: hàng dưới + END ============ -->
+                <g>
+                    <rect x="248" y="410" width="154" height="54" rx="8" fill="#ffe9e3" stroke="#ff3300" stroke-width="2.5"/>
+                    <text class="svg-node" x="325" y="443" font-size="17" fill="#c52700" text-anchor="middle">quarantine</text>
+                    <rect x="838" y="410" width="148" height="54" rx="8" fill="#ffe9e3" stroke="#ff3300" stroke-width="2.5"/>
+                    <text class="svg-node" x="912" y="443" font-size="17" fill="#c52700" text-anchor="middle">reject_fast</text>
+                    <rect x="1590" y="471" width="96" height="54" rx="27" fill="#0d0d0d"/>
+                    <text x="1638" y="504" font-family="'Archivo',sans-serif" font-weight="800" font-size="16" fill="#fff" text-anchor="middle">END</text>
+                </g>
+
+                <!-- ============ CHÚ GIẢI ============ -->
+                <g>
+                    <rect x="10" y="520" width="900" height="72" fill="none" stroke="#c9c9c4" stroke-width="1.5" stroke-dasharray="6 4"/>
+                    <line x1="30" y1="543" x2="86" y2="543" stroke="#0d0d0d" stroke-width="2.5" marker-end="url(#g-dk)"/>
+                    <text class="svg-lab" x="98" y="548" font-size="16">Luồng tuần tự tiêu chuẩn</text>
+                    <line x1="30" y1="573" x2="86" y2="573" stroke="#1f4fd8" stroke-width="2.5" stroke-dasharray="8 5" marker-end="url(#g-bl)"/>
+                    <text class="svg-lab" x="98" y="578" font-size="16">Luồng điều kiện (conditional edge)</text>
+                    <line x1="470" y1="543" x2="526" y2="543" stroke="#ff3300" stroke-width="2.5" stroke-dasharray="8 5" marker-end="url(#g-rd)"/>
+                    <text class="svg-lab" x="538" y="548" font-size="16">Nhánh thoát sớm (đến END)</text>
+                    <path d="M470,578 C466,562 522,562 518,574" fill="none" stroke="#1f4fd8" stroke-width="2.5" stroke-dasharray="8 5" marker-end="url(#g-bl)"/>
+                    <text class="svg-lab" x="538" y="578" font-size="16">Vòng lặp có giới hạn (self-loop)</text>
+                </g>
+                <text class="svg-lab" x="940" y="548" font-size="17" fill="#0d0d0d"><tspan font-weight="700">13 node</tspan> · <tspan font-weight="700">4 conditional edge</tspan></text>
+                <text class="svg-lab" x="940" y="578" font-size="17">State là <tspan font-weight="700" fill="#0d0d0d">MỘT</tspan> pydantic model chảy xuyên graph</text>
+            </svg>
+            <figcaption>Sơ đồ sinh từ chính graph · nguồn: docs/diagrams/graph.mmd · src/graph/build.py · src/graph/routes.py</figcaption>
+        </figure>
+    </div>
+
+    <div class="slide-foot">
+        <div class="src">nguồn: <b>docs/diagrams/graph.mmd</b> · <b>src/graph/build.py</b> · <b>src/graph/routes.py</b> · % lưu lượng thật của bốn nhánh ở slide 11</div>
+        <div class="pageno">04<span> / 12</span></div>
+    </div>
+
+    <div class="notes">
+        <p>13 node, không phải 12 — đọc thẳng từ <code>docs/diagrams/graph.mmd</code>, sinh tự động từ chính graph. Bốn conditional edge nằm gọn trong <code>src/graph/routes.py</code>: mỗi hàm là một pure function của state, không gọi tool và không gọi model.</p>
+        <p>Chú ý một chỗ dễ vẽ sai: <code>deep_review</code> <b>không</b> đi thẳng tới <code>rank</code> — nó quay về <code>decide</code>, rồi <code>decide → rank</code>. Đúng như <code>graph.mmd</code>.</p>
+        <p>Slide này cố tình <b>không có số</b>: nó trả lời câu "hệ thống gồm những gì". Câu "nhánh nào thật sự có lưu lượng" là một câu khác, và tôi trả lời bằng số đo ở slide 11 — bốn conditional edge, bốn con số đo trên <code>test_500</code>. Nguyên tắc mang về được: <b>nhánh không có số đo là nhánh trang trí</b> (spec §4).</p>
+        <p>Ngưỡng <code>max_repair_attempts = 2</code>: đo trên dữ liệu thật thì vòng thứ hai chưa bao giờ phải chạy — 12/12 hồ sơ cần repair được sửa ngay vòng đầu (<code>src/graph/routes.py</code>).</p>
+    </div>
+</section>
+<!-- ======================================================================
+     SLIDE 6 — KIẾN TRÚC: BA KHỐI LOGIC
+     ====================================================================== -->
+<section class="slide" aria-label="Kiến trúc — ba khối logic">
+    <div class="slide-head">
+        <div class="kicker"><span class="bar"></span>Kiến trúc 2 / 2</div>
+        <h2 class="vn">Cùng graph đó, đọc thành ba khối logic</h2>
+        <div class="en">Three logical layers</div>
+        <div class="head-rule"></div>
+    </div>
+
+    <!-- dải "VÍ DỤ XUYÊN SUỐT" đã bỏ cùng walkthrough —
+         phân bố đều phần trống thay vì để hụt ở đáy -->
+    <div class="slide-body" style="display:flex; flex-direction:column; justify-content:space-between;">
+        <div class="philosophy reveal" style="font-size:29px;">
+            “Đừng bắt LLM làm những gì <span>thuật toán cổ điển</span> làm tốt hơn.”
+        </div>
+
+        <figure class="asset-slot reveal" data-asset="03-architecture-3-layers.png" style="margin-top:16px;">
+            <svg viewBox="0 0 1560 340" role="img" aria-label="13 node nhóm thành ba tầng logic">
+                <defs>
+                    <marker id="a-k3" viewBox="0 0 10 10" refX="9.5" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                        <path d="M0,0 L10,5 L0,10 z" fill="#0d0d0d"/></marker>
+                </defs>
+
+                <!-- TẦNG 1 -->
+                <g>
+                    <rect x="0" y="0" width="480" height="340" fill="#fff1ec"/>
+                    <rect x="0" y="0" width="480" height="56" fill="#ff3300"/>
+                    <text x="18" y="26" font-family="'Archivo',sans-serif" font-weight="800" font-size="17" fill="#ffffff">1 · TẦNG PHÒNG THỦ &amp; TIỀN XỬ LÝ</text>
+                    <text x="18" y="46" font-family="'Nunito',sans-serif" font-size="15" fill="#ffd9cf">Safety &amp; Ingestion</text>
+                    <rect x="20" y="76" width="205" height="40" fill="#fff" stroke="#0d0d0d" stroke-width="2"/>
+                    <text class="svg-node" x="122" y="102" text-anchor="middle">ingest</text>
+                    <rect x="255" y="76" width="205" height="40" fill="#fff" stroke="#0d0d0d" stroke-width="2"/>
+                    <text class="svg-node" x="357" y="102" text-anchor="middle">guard</text>
+                    <rect x="20" y="126" width="205" height="40" fill="#fff" stroke="#0d0d0d" stroke-width="2"/>
+                    <text class="svg-node" x="122" y="152" text-anchor="middle">quarantine</text>
+                    <rect x="255" y="126" width="205" height="40" fill="#fff" stroke="#0d0d0d" stroke-width="2"/>
+                    <text class="svg-node" x="357" y="152" text-anchor="middle">extract</text>
+                    <rect x="20" y="176" width="205" height="40" fill="#fff" stroke="#0d0d0d" stroke-width="2"/>
+                    <text class="svg-node" x="122" y="202" text-anchor="middle">repair</text>
+                    <text class="svg-lab" x="20" y="262" font-size="18">HIGH → <tspan font-family="'IBM Plex Mono',monospace">quarantine</tspan>, còn lại → <tspan font-family="'IBM Plex Mono',monospace">extract</tspan></text>
+                    <text class="svg-lab" x="20" y="292" font-size="18">Ngày không parse được → <tspan font-family="'IBM Plex Mono',monospace">repair</tspan>, tối đa 2 vòng</text>
+                </g>
+                <line x1="492" y1="170" x2="528" y2="170" stroke="#0d0d0d" stroke-width="3" marker-end="url(#a-k3)"/>
+
+                <!-- TẦNG 2 -->
+                <g>
+                    <rect x="540" y="0" width="480" height="340" fill="#eef2fd"/>
+                    <rect x="540" y="0" width="480" height="56" fill="#1f4fd8"/>
+                    <text x="558" y="26" font-family="'Archivo',sans-serif" font-weight="800" font-size="17" fill="#ffffff">2 · TẦNG LỌC SỚM &amp; ĐỊNH LƯỢNG</text>
+                    <text x="558" y="46" font-family="'Nunito',sans-serif" font-size="15" fill="#cdd9fa">Fast-Gating &amp; Deterministic Scoring</text>
+                    <rect x="560" y="76" width="205" height="40" fill="#fff" stroke="#0d0d0d" stroke-width="2"/>
+                    <text class="svg-node" x="662" y="102" text-anchor="middle">load_rubric</text>
+                    <rect x="795" y="76" width="205" height="40" fill="#fff" stroke="#0d0d0d" stroke-width="2"/>
+                    <text class="svg-node" x="897" y="102" text-anchor="middle">must_have_check</text>
+                    <rect x="560" y="126" width="205" height="40" fill="#fff" stroke="#0d0d0d" stroke-width="2"/>
+                    <text class="svg-node" x="662" y="152" text-anchor="middle">reject_fast</text>
+                    <text class="svg-lab" x="560" y="262" font-size="18">Thiếu tiêu chí tiên quyết → <tspan font-family="'IBM Plex Mono',monospace">reject_fast</tspan></text>
+                    <text class="svg-lab" x="560" y="292" font-size="18">Nơi <tspan font-weight="700" fill="#0d0d0d">5 tool tất định</tspan> chạy</text>
+                </g>
+                <line x1="1032" y1="170" x2="1068" y2="170" stroke="#0d0d0d" stroke-width="3" marker-end="url(#a-k3)"/>
+
+                <!-- TẦNG 3 -->
+                <g>
+                    <rect x="1080" y="0" width="480" height="340" fill="#f8f3e2"/>
+                    <rect x="1080" y="0" width="480" height="56" fill="#a68200"/>
+                    <text x="1098" y="26" font-family="'Archivo',sans-serif" font-weight="800" font-size="17" fill="#ffffff">3 · TẦNG ĐÁNH GIÁ SÂU &amp; VÙNG XÁM</text>
+                    <text x="1098" y="46" font-family="'Nunito',sans-serif" font-size="15" fill="#f3e6bd">Rubric &amp; Grey-zone Resolution</text>
+                    <rect x="1100" y="76" width="205" height="40" fill="#fff" stroke="#0d0d0d" stroke-width="2"/>
+                    <text class="svg-node" x="1202" y="102" text-anchor="middle">score_criteria</text>
+                    <rect x="1335" y="76" width="205" height="40" fill="#fff" stroke="#0d0d0d" stroke-width="2"/>
+                    <text class="svg-node" x="1437" y="102" text-anchor="middle">aggregate</text>
+                    <rect x="1100" y="126" width="205" height="40" fill="#fff" stroke="#0d0d0d" stroke-width="2"/>
+                    <text class="svg-node" x="1202" y="152" text-anchor="middle">deep_review</text>
+                    <rect x="1335" y="126" width="205" height="40" fill="#fff" stroke="#0d0d0d" stroke-width="2"/>
+                    <text class="svg-node" x="1437" y="152" text-anchor="middle">decide</text>
+                    <rect x="1100" y="176" width="205" height="40" fill="#fff" stroke="#0d0d0d" stroke-width="2"/>
+                    <text class="svg-node" x="1202" y="202" text-anchor="middle">rank</text>
+                    <text class="svg-lab" x="1100" y="262" font-size="18">Vùng tranh chấp → <tspan font-family="'IBM Plex Mono',monospace">deep_review</tspan> một lượt</text>
+                    <text class="svg-lab" x="1100" y="292" font-size="18">Ngưỡng vùng xám = tham số điều khiển nhánh</text>
+                </g>
+            </svg>
+            <figcaption>Cùng 13 node của slide 4, nhóm lại theo trách nhiệm</figcaption>
+        </figure>
+
+        <div class="row reveal" style="margin-top:18px; gap:30px;">
+            <div class="col" style="border-left:7px solid var(--blue); padding-left:16px; font-family:var(--font-body); font-size:22px; line-height:1.32; color:var(--ink-2);">
+                <b style="color:var(--ink);">JD thành dữ liệu, không thành prompt</b> — YAML: tiêu chí + trọng số + <code class="mono">must_have</code> + 2 ngưỡng.
+            </div>
+            <div class="col" style="border-left:7px solid var(--red); padding-left:16px; font-family:var(--font-body); font-size:22px; line-height:1.32; color:var(--ink-2);">
+                <b style="color:var(--ink);">Agent không loại ứng viên.</b> <code class="mono">reject_fast</code> vẫn ghi điểm mọi tiêu chí khác.
+            </div>
+        </div>
+    </div>
+
+
+    <div class="slide-foot">
+        <div class="src">nguồn: <b>src/graph/build.py</b> · <b>docs/spec/…-spec.md</b> §2, §4, §6 · không có số đo mới trên slide này</div>
+        <div class="pageno">05<span> / 12</span></div>
+    </div>
+
+    <div class="notes">
+        <p>Ba tầng là cách đọc, không phải cấu trúc thứ hai trong code: vẫn đúng 13 node của slide 4.</p>
+        <p>Rubric là quyết định thiết kế đáng nói nhất ở đây: JD được chuyển thành dữ liệu YAML có trọng số, cờ <code>must_have</code> và hai ngưỡng cắt (spec §6). HR sửa được mà hệ thống vẫn tái lập được; nhét JD vào prompt thì mỗi lần sửa là một hệ thống khác.</p>
+        <p><b>Phản biện dễ nhất:</b> "<code>reject_fast</code> chẳng phải là loại ứng viên sao?" Không: theo spec §2 nó gán nhãn <code>No Fit</code> nhưng <b>vẫn chấm mọi tiêu chí khác</b> để giao diện giải thích được — đó là chỗ Article 14 sống được. Cái giá của cổng này tôi đo và đưa lên slide 11.</p>
+    </div>
+</section>
+
+<!-- ======================================================================
+     SLIDE 7 — NĂM TOOL TẤT ĐỊNH
+     ====================================================================== -->
+<!-- ======================================================================
+     SLIDE 6 — NĂM TOOL TẤT ĐỊNH
+     ====================================================================== -->
+<section class="slide" aria-label="Năm tool tất định">
+    <div class="slide-head">
+        <div class="kicker"><span class="bar"></span>Thành phần</div>
+        <h2 class="vn">Năm tool tất định, và việc không giao cho LLM</h2>
+        <div class="en">Five deterministic tools</div>
+        <div class="head-rule"></div>
+    </div>
+
+    <div class="slide-body">
+        <table class="swiss reveal">
+            <thead>
+                <tr>
+                    <th style="width:320px;">Tool</th>
+                    <th style="width:660px;">Nó làm gì</th>
+                    <th>Vì sao không để LLM làm</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td class="mono" style="font-size:23px; color:var(--red-deep); font-weight:600; padding:18px 14px;">calculate_experience</td>
+                    <td style="font-size:23px; padding:18px 14px;">Cộng các mốc thời gian trong CV ra số năm kinh nghiệm, phần trùng nhau chỉ tính một lần</td>
+                    <td style="font-size:23px; padding:18px 14px;">Hai việc song song 2019–2021 và 2020–2022 là <b>3 năm</b>, không phải 4</td>
+                </tr>
+                <tr>
+                    <td class="mono" style="font-size:23px; color:var(--red-deep); font-weight:600; padding:18px 14px;">normalize_skill</td>
+                    <td style="font-size:23px; padding:18px 14px;">Nhận ra các cách viết khác nhau của cùng một kỹ năng</td>
+                    <td style="font-size:23px; padding:18px 14px;">So khái niệm, không so chuỗi — <code>React</code> = <code>ReactJS</code>, nhưng <code>C#</code> ≠ <code>C</code></td>
+                </tr>
+                <tr>
+                    <td class="mono" style="font-size:23px; color:var(--red-deep); font-weight:600; padding:18px 14px;">search_evidence</td>
+                    <td style="font-size:23px; padding:18px 14px;">Tìm trong CV đoạn văn ứng với tiêu chí, trả về <b>nguyên văn kèm vị trí</b></td>
+                    <td style="font-size:23px; padding:18px 14px;">Nền tảng E1 — điểm chỉ bảo vệ được khi chỉ ra được câu đã sinh ra nó</td>
+                </tr>
+                <tr>
+                    <td class="mono" style="font-size:23px; color:var(--red-deep); font-weight:600; padding:18px 14px;">scan_injection</td>
+                    <td style="font-size:23px; padding:18px 14px;">Phát hiện câu lệnh ẩn trong CV nhắm vào chính model chấm điểm</td>
+                    <td style="font-size:23px; padding:18px 14px;">CV là văn bản của người ngoài, dán thẳng vào context của model</td>
+                </tr>
+                <tr>
+                    <td class="mono" style="font-size:23px; color:var(--red-deep); font-weight:600; padding:18px 14px;">aggregate_scorecard</td>
+                    <td style="font-size:23px; padding:18px 14px;">Nhân điểm từng tiêu chí với trọng số rồi cộng lại</td>
+                    <td style="font-size:23px; padding:18px 14px;">Không để model tự cộng điểm của chính nó</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div class="philosophy reveal" style="margin-top:34px; font-size:27px;">
+            “Cùng một đầu vào, <span>luôn</span> cùng một đầu ra.” — đó là lý do năm việc này không giao cho model.
+        </div>
+    </div>
+
+    <div class="slide-foot">
+        <div class="src">nguồn: <b>src/tools/*.py</b> (docstring đầu file) · <b>docs/spec/…-spec.md §5</b></div>
+        <div class="pageno">06<span> / 12</span></div>
+    </div>
+
+    <div class="notes">
+        <p>Cơ chế thật, nếu bị hỏi: <code>search_evidence</code> khớp <b>chính xác</b> trên bản văn bản đã chuẩn hóa; không có thì trượt cửa sổ theo từ và chấm bằng <code>difflib.SequenceMatcher</code>, ngưỡng <code>min_score=0.75</code>. <b>Không có BM25 ở bất kỳ đâu trong code</b> — gói <code>rank-bm25</code> nằm trong <code>requirements.txt</code> nhưng không được import. Quote trả về luôn là slice nguyên văn của CV gốc kèm offset ký tự.</p>
+        <p><code>normalize_skill</code> là một <b>bảng alias phẳng</b> trong <code>data/skills/aliases.yaml</code>, sinh ra hai bảng tra: khóa canonical để so sánh và bảng surface form để làm truy vấn cho <code>search_evidence</code>. Gọi nó là ontology là hứa một cấu trúc phân cấp không tồn tại.</p>
+        <p><code>scan_injection</code> chạy regex trên bản chuẩn hóa: HIGH → <code>quarantine</code>, LOW → chỉ ghi chú và cho chạy tiếp. Một rule ứng viên đã <b>bị loại bỏ</b> vì false-positive — <code>act\s+as\s+(a|an|the)</code> khớp 3 CV thật ("act as a liaison") — và docstring ghi thẳng "do not re-add it". Đây là bằng chứng rằng rule được đo, không phải được đoán.</p>
+        <p>Con số cho ví dụ cộng thời gian: trên dữ liệu dev, <b>198 trong 290</b> CV có khoảng thời gian chồng lấn — tức cộng dồn kiểu naive sai trên hai phần ba CV thật (<code>src/tools/experience.py</code>). Tôi để con số này ở đây thay vì trên slide, và đưa nó ra khi bị hỏi.</p>
+        <p><code>aggregate_scorecard</code> còn một chi tiết đáng nói: tiêu chí không chấm được tính 0.0 và <b>được gọi tên</b>, không lặng lẽ bỏ khỏi mẫu số — rescale theo trọng số đã phủ sẽ khiến một lỗi chấm trông như một ứng viên tốt.</p>
+    </div>
+</section>
+<!-- ======================================================================
+     SLIDE 8 — WALKTHROUGH MỘT HỒ SƠ
+     ====================================================================== -->
+<!-- ======================================================================
+     WALKTHROUGH 1 / 7 — ingest → guard
+     ====================================================================== -->
+<section class="slide" aria-label="Demo — chạy trực tiếp một hồ sơ qua graph">
+    <div class="slide-head">
+        <div class="kicker"><span class="bar"></span>Demo</div>
+        <h2 class="vn">Chạy thật một hồ sơ, xem từng node sáng lên</h2>
+        <div class="en">Live run — the graph streamed node by node</div>
+        <div class="head-rule"></div>
+    </div>
+
+    <div class="slide-body">
+        <div class="row" style="gap:36px; height:100%;">
+
+            <!-- ===== TRÁI: bốn ca demo, mỗi ca bật một nhánh ===== -->
+            <div class="col" style="width:1010px; flex:none; display:flex; flex-direction:column;">
+                <div class="out-head reveal">Bốn ca demo — mỗi ca bật một nhánh khác nhau</div>
+
+                <div class="case reveal">
+                    <span class="n">1</span>
+                    <div>
+                        <div class="t">Ứng viên phù hợp — Senior Backend Engineer</div>
+                        <div class="b">đường chính, không rẽ <i>· 6 năm kinh nghiệm, kỳ vọng điểm &#8805; 0.70</i></div>
+                    </div>
+                </div>
+
+                <div class="case edge reveal">
+                    <span class="n">2</span>
+                    <div>
+                        <div class="t">Thiếu yêu cầu tiên quyết</div>
+                        <div class="b">must_have_check &#8594; reject_fast <i>· loại trước khi chấm, không tốn token chấm điểm</i></div>
+                    </div>
+                </div>
+
+                <div class="case edge reveal">
+                    <span class="n">3</span>
+                    <div>
+                        <div class="t">CV có chỉ thị ẩn nhắm vào model chấm điểm</div>
+                        <div class="b">guard &#8594; quarantine <i>· tắt guard bằng cờ ablation để xem nó có tác dụng gì</i></div>
+                    </div>
+                </div>
+
+                <div class="case edge reveal">
+                    <span class="n">4</span>
+                    <div>
+                        <div class="t">Hồ sơ ranh giới, điểm rơi sát ngưỡng</div>
+                        <div class="b">aggregate &#8594; deep_review <i>· chấm lại từng tiêu chí rồi mới ra nhãn</i></div>
+                    </div>
+                </div>
+
+                <div class="state-line reveal" style="margin-top:auto;">
+                    Bốn nhánh này là bốn <em>conditional edge</em> của graph ở slide 4. Stepper hỏi thẳng
+                    <em>src/graph/routes.py</em> — không chép lại luật rẽ, nên nó không thể lệch với graph thật.
+                </div>
+            </div>
+
+            <!-- ===== PHẢI: nhìn vào đâu + phương án dự phòng ===== -->
+            <div class="col stack" style="gap:20px;">
+                <div>
+                    <div class="out-head reveal">Nhìn vào đâu trên màn hình</div>
+                    <div class="watch reveal"><span class="tag">Trace</span><span>Stepper: node nào đang chạy, rẽ đi đâu, <b>ngay khi nó xảy ra</b></span></div>
+                    <div class="watch reveal"><span class="tag">Evidence</span><span>Trích dẫn được tô <b>ngay trên CV gốc</b>, không phải model kể lại</span></div>
+                    <div class="watch reveal"><span class="tag">Scorecard</span><span>Nhãn cuối cùng đóng góp của <b>từng tiêu chí</b></span></div>
+                    <div class="watch reveal"><span class="tag">E2</span><span>Các công tắc <b>ablation</b> — tắt một khâu rồi chạy lại</span></div>
+                </div>
+
+                <div class="callout reveal" style="font-size:20px; padding:18px 20px; margin-top:auto;">
+                    <span class="lbl">Dự phòng — replay offline hàng #146</span>
+                    Nếu mạng hoặc API hỏng: toàn bộ graph chạy lại được từ cache, <b>0 lần gọi API</b>.
+                    <div style="font-family:var(--font-mono); font-size:16px; line-height:1.5; color:var(--ink-2); margin-top:10px;">
+                        repair: bad_dates <b>8 &#8594; 0</b><br>
+                        aggregate: <b>0.6857</b> · vùng xám &#8594; deep_review<br>
+                        kết quả: <b>0.7524 &#183; Good Fit</b> — trùng nhãn thật
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="slide-foot">
+        <div class="src">nguồn: <b>app/demo_cases.py</b> (bốn ca) · <b>app/server.py</b> (SSE) · <b>src/graph/routes.py</b> (luật rẽ) · replay <b>#146</b> từ <b>data/cache/llm_cache.jsonl</b></div>
+        <div class="pageno">07<span> / 12</span></div>
+    </div>
+
+    <div class="notes">
+        <p><b>Chạy demo:</b> <code>python -m app.server</code> → <code>http://localhost:8000</code>. Mở sẵn trước khi lên nói, chọn preset ở khung “Dữ liệu đầu vào”. Mỗi ca mất vài chục giây vì nó gọi model thật.</p>
+        <p><b>Thứ tự nên diễn:</b> ca 2 trước (nhanh nhất, thấy ngay nhánh tắt), rồi ca 3 (bật / tắt guard để so), rồi ca 4 nếu còn thời gian. Ca 1 chỉ cần nói miệng — nó không rẽ đi đâu cả.</p>
+        <p><b>Điểm chính cần chỉ ra khi stepper chạy:</b> cái đang sáng lên không phải một hiệu ứng trình diễn. <code>predict_next_node</code> gọi thẳng bốn hàm routing trong <code>src/graph/routes.py</code> qua một bảng tra, còn các cạnh vô điều kiện thì soi theo <code>build_graph</code>. Bản đầu tiên <i>chép lại</i> luật rẽ và đã lệch khỏi graph ở ba chỗ; bảy test hiện ghim từng nhánh, ba trong số đó trượt với bản chép. Nói chuyện này ra — nó là lý do preview đáng tin.</p>
+        <p><b>Phản biện dễ nhất — tự nêu trước:</b> “Bốn ca này do anh tự viết, tất nhiên nó chạy đúng.” Đúng. Bốn ca là CV/JD tự soạn trong <code>app/demo_cases.py</code>, chọn riêng để mỗi ca bật đúng một nhánh — chúng chứng minh <b>cơ chế chạy đúng như mô tả</b>, không chứng minh gì về độ chính xác. Độ chính xác nằm ở slide 9–11, đo trên 300 và 500 hàng không phải do tôi soạn.</p>
+        <p><b>Cũng nói thẳng:</b> trên 300 CV thật của <code>dev_300</code>, <b>0</b> hồ sơ kích hoạt rule nào của guard. Ca 3 là CV tự soạn có chỉ thị ẩn. Giá trị của guard là <i>từ chối xử lý</i> một tài liệu đang cố can thiệp, không phải ngăn một can thiệp lẽ ra đã thành công.</p>
+        <p><b>Nếu demo chết:</b> chuyển sang khối dự phòng bên phải và kể hàng #146 — CV đó ghi ngày kiểu <code>01/1-01/1</code> nên <code>extract</code> trả về 8 trường ngày hỏng, <code>repair</code> vá hết trong một vòng, điểm cộng lại rơi vào vùng xám nên bị chấm lại, và nhãn cuối trùng nhãn thật của dataset. Toàn bộ replay từ <code>data/cache/llm_cache.jsonl</code>, không gọi API lần nào.</p>
+    </div>
+</section>
+
+<!-- ======================================================================
+     SLIDE 8 — ĐẦU RA
+     ====================================================================== -->
+<section class="slide" aria-label="Đầu ra — bằng chứng gắn vào điểm">
+    <div class="slide-head">
+        <div class="kicker"><span class="bar"></span>Đầu ra</div>
+        <h2 class="vn">Bằng chứng gắn vào điểm — và giới hạn của nó</h2>
+        <div class="en">Output: evidence attached to the score</div>
+        <div class="head-rule"></div>
+    </div>
+
+    <div class="slide-body">
+        <figure class="asset-slot reveal" data-asset="05-scorecard-evidence.png">
+            <svg viewBox="0 0 1560 528" role="img" aria-label="Scorecard hàng 146: tiêu chí, trích dẫn nguyên văn, điểm, tool_used">
+                <text x="8"    y="18" font-family="'Archivo',sans-serif" font-weight="800" font-size="14" fill="#0d0d0d" letter-spacing="1">TIÊU CHÍ &#183; TRÍCH DẪN NGUYÊN VĂN KÈM OFFSET</text>
+                <text x="1150" y="18" font-family="'Archivo',sans-serif" font-weight="800" font-size="14" fill="#0d0d0d" letter-spacing="1">ĐIỂM</text>
+                <text x="1352" y="18" font-family="'Archivo',sans-serif" font-weight="800" font-size="14" fill="#0d0d0d" letter-spacing="1">TOOL_USED</text>
+                <line x1="0" y1="26" x2="1560" y2="26" stroke="#0d0d0d" stroke-width="3"/>
+                <g>
+                    <text x="8" y="56" font-family="'IBM Plex Mono',monospace" font-size="16" fill="#0d0d0d">leadership_experience</text><rect x="205" y="42" width="86" height="19" fill="#ff3300"/><text x="211" y="56" font-family="'IBM Plex Mono',monospace" font-size="12" fill="#fff">must_have</text>
+                    <rect x="1150" y="43" width="110" height="15" fill="#ebebe6"/><rect x="1150" y="43" width="88" height="15" fill="#0d0d0d"/>
+                    <text x="1276" y="56" font-family="'IBM Plex Mono',monospace" font-size="16" fill="#0d0d0d">0.80</text>
+                    <text x="1352" y="56" font-family="'IBM Plex Mono',monospace" font-size="12.5" fill="#6e6e6a">deep_review</text>
+                    <line x1="14" y1="70" x2="14" y2="86" stroke="#ff3300" stroke-width="2.5"/><text x="28" y="83" font-family="'IBM Plex Mono',monospace" font-size="13.5" fill="#0d0d0d">&#8220;Trained a fresher's batch of 25 engineers&#8221; <tspan fill="#8a8a84">[2092:2133]</tspan></text>
+                    <line x1="0" y1="94" x2="1560" y2="94" stroke="#e8e8e4" stroke-width="1"/>
+                </g>
+                <g>
+                    <text x="8" y="118" font-family="'IBM Plex Mono',monospace" font-size="16" fill="#0d0d0d">client_focus_analysis</text>
+                    <rect x="1150" y="105" width="110" height="15" fill="#ebebe6"/><rect x="1150" y="105" width="88" height="15" fill="#0d0d0d"/>
+                    <text x="1276" y="118" font-family="'IBM Plex Mono',monospace" font-size="16" fill="#0d0d0d">0.80</text>
+                    <text x="1352" y="118" font-family="'IBM Plex Mono',monospace" font-size="12.5" fill="#6e6e6a">skill+evidence</text>
+                    <line x1="14" y1="132" x2="14" y2="148" stroke="#ff3300" stroke-width="2.5"/><text x="28" y="145" font-family="'IBM Plex Mono',monospace" font-size="13.5" fill="#0d0d0d">&#8220;Collaborated with design, strategy and sales teams to find solutions for client website projects&#8221; <tspan fill="#8a8a84">[1654:1750]</tspan></text>
+                    <line x1="0" y1="156" x2="1560" y2="156" stroke="#e8e8e4" stroke-width="1"/>
+                </g>
+                <g>
+                    <text x="8" y="180" font-family="'IBM Plex Mono',monospace" font-size="16" fill="#0d0d0d">system_requirements_validation</text>
+                    <rect x="1150" y="167" width="110" height="15" fill="#ebebe6"/><rect x="1150" y="167" width="88" height="15" fill="#0d0d0d"/>
+                    <text x="1276" y="180" font-family="'IBM Plex Mono',monospace" font-size="16" fill="#0d0d0d">0.80</text>
+                    <text x="1352" y="180" font-family="'IBM Plex Mono',monospace" font-size="12.5" fill="#6e6e6a">skill+evidence</text>
+                    <line x1="14" y1="194" x2="14" y2="210" stroke="#ff3300" stroke-width="2.5"/><text x="28" y="207" font-family="'IBM Plex Mono',monospace" font-size="13.5" fill="#0d0d0d">&#8220;Deployed and Delivered enhanced web plugins , security services, website data analysis…&#8221; <tspan fill="#8a8a84">[1538:1654]</tspan></text>
+                    <line x1="0" y1="218" x2="1560" y2="218" stroke="#e8e8e4" stroke-width="1"/>
+                </g>
+                <g>
+                    <text x="8" y="242" font-family="'IBM Plex Mono',monospace" font-size="16" fill="#0d0d0d">business_process_analysis</text>
+                    <rect x="1150" y="229" width="110" height="15" fill="#ebebe6"/><rect x="1150" y="229" width="88" height="15" fill="#0d0d0d"/>
+                    <text x="1276" y="242" font-family="'IBM Plex Mono',monospace" font-size="16" fill="#0d0d0d">0.80</text>
+                    <text x="1352" y="242" font-family="'IBM Plex Mono',monospace" font-size="12.5" fill="#6e6e6a">skill+evidence</text>
+                    <line x1="14" y1="256" x2="14" y2="272" stroke="#ff3300" stroke-width="2.5"/><text x="28" y="269" font-family="'IBM Plex Mono',monospace" font-size="13.5" fill="#0d0d0d">&#8220;Managed responsibilities of scoping and business meetings with business stakeholders&#8221; <tspan fill="#8a8a84">[2282:2366]</tspan></text>
+                    <line x1="0" y1="280" x2="1560" y2="280" stroke="#e8e8e4" stroke-width="1"/>
+                </g>
+                <g>
+                    <text x="8" y="304" font-family="'IBM Plex Mono',monospace" font-size="16" fill="#0d0d0d">meeting_facilitation</text>
+                    <rect x="1150" y="291" width="110" height="15" fill="#ebebe6"/><rect x="1150" y="291" width="88" height="15" fill="#0d0d0d"/>
+                    <text x="1276" y="304" font-family="'IBM Plex Mono',monospace" font-size="16" fill="#0d0d0d">0.80</text>
+                    <text x="1352" y="304" font-family="'IBM Plex Mono',monospace" font-size="12.5" fill="#6e6e6a">deep_review</text>
+                    <line x1="14" y1="318" x2="14" y2="334" stroke="#ff3300" stroke-width="2.5"/><text x="28" y="331" font-family="'IBM Plex Mono',monospace" font-size="13.5" fill="#0d0d0d">&#8220;Facilitating Meetings&#8221; <tspan fill="#8a8a84">[885:906]</tspan></text>
+                    <line x1="0" y1="342" x2="1560" y2="342" stroke="#e8e8e4" stroke-width="1"/>
+                </g>
+                <g>
+                    <text x="8" y="366" font-family="'IBM Plex Mono',monospace" font-size="16" fill="#0d0d0d">requirements_documentation</text>
+                    <rect x="1150" y="353" width="110" height="15" fill="#ebebe6"/><rect x="1150" y="353" width="77" height="15" fill="#0d0d0d"/>
+                    <text x="1276" y="366" font-family="'IBM Plex Mono',monospace" font-size="16" fill="#0d0d0d">0.70</text>
+                    <text x="1352" y="366" font-family="'IBM Plex Mono',monospace" font-size="12.5" fill="#6e6e6a">deep_review</text>
+                    <line x1="14" y1="380" x2="14" y2="396" stroke="#ff3300" stroke-width="2.5"/><text x="28" y="393" font-family="'IBM Plex Mono',monospace" font-size="13.5" fill="#0d0d0d">&#8220;Created and maintained programmatic and technical documentation&#8221; <tspan fill="#8a8a84">[2617:2680]</tspan></text>
+                    <line x1="0" y1="404" x2="1560" y2="404" stroke="#e8e8e4" stroke-width="1"/>
+                </g>
+                <g>
+                    <text x="8" y="428" font-family="'IBM Plex Mono',monospace" font-size="16" fill="#c52700">mainframe_modernization</text>
+                    <rect x="1150" y="415" width="110" height="15" fill="#ebebe6"/><rect x="1150" y="415" width="0" height="15" fill="#ebebe6"/>
+                    <text x="1276" y="428" font-family="'IBM Plex Mono',monospace" font-size="16" fill="#c52700">0.00</text>
+                    <text x="1352" y="428" font-family="'IBM Plex Mono',monospace" font-size="12.5" fill="#6e6e6a">deep_review</text>
+                    <line x1="14" y1="442" x2="14" y2="458" stroke="#c9c9c4" stroke-width="2.5"/><text x="28" y="455" font-family="'IBM Plex Mono',monospace" font-size="13.5" fill="#c52700" font-weight="600">KHÔNG có trích dẫn — has_evidence = false</text>
+                    <line x1="0" y1="466" x2="1560" y2="466" stroke="#e8e8e4" stroke-width="1"/>
+                </g>
+                <text x="8" y="492" font-family="'Archivo',sans-serif" font-weight="800" font-size="15" fill="#0d0d0d">6 / 7 TIÊU CHÍ CÓ TRÍCH DẪN &#183; TIÊU CHÍ DUY NHẤT CHẤM 0.00 LÀ TIÊU CHÍ DUY NHẤT KHÔNG CÓ</text>
+                <text x="8" y="514" font-family="'IBM Plex Mono',monospace" font-size="12.5" fill="#8a8a84">skill+evidence = normalize_skill + search_evidence &#183; &#8230; = trích dẫn bị cắt cho vừa slide, offset là của span đầy đủ</text>
+            </svg>
+        </figure>
+
+        <ul class="points reveal" style="margin-top:26px;">
+            <li style="font-size:26px;">Theo thiết kế: tiêu chí <b>0.0</b> trả về <b>không kèm trích dẫn</b>.</li>
+            <li style="font-size:26px;">Nên “CV im lặng về tiêu chí” và “CV không đạt tiêu chí” tới bước cộng điểm như <b>cùng một con số</b>.</li>
+        </ul>
+    </div>
+
+    <div class="slide-foot">
+        <div class="src">nguồn: replay hàng <b>#146</b> của <code>test_500</code> từ <b>data/cache/llm_cache.jsonl</b> (0 lần gọi API) · <code>SCORE_SYSTEM</code>: <b>src/graph/scoring.py</b></div>
+        <div class="pageno">08<span> / 12</span></div>
+    </div>
+
+    <div class="notes">
+        <p>Đây là thứ agent giao ra: không phải một nhãn, mà một scorecard trong đó <b>mỗi điểm dắt theo câu đã sinh ra nó</b>, kèm offset ký tự để slice lại được từ CV gốc. Sáu trong bảy tiêu chí có trích dẫn.</p>
+        <p>Giới hạn là một quyết định thiết kế chứ không phải bug: <code>SCORE_SYSTEM</code> yêu cầu tiêu chí nào CV không hỗ trợ thì chấm 0.0 và <b>không trả quote</b>. Hệ quả thật là hệ thống không phân biệt được “CV im lặng về tiêu chí” với “CV rõ ràng không đạt” — cả hai tới <code>aggregate_scorecard</code> như số 0.0. Đo trên dev: 988 trong 1906 điểm tiêu chí là 0.0, và 866 trong số đó tới aggregator không kèm bằng chứng nào.</p>
+        <p><b>Phản biện dễ nhất:</b> "Vậy bỏ các tiêu chí 0.0 khỏi tổng đi." Đã thử, và không được: cặp contested vẫn ở mức ngẫu nhiên (AUC 0.524), cặp tách được thì tệ đi (0.628 → 0.564), và 56 hàng rụng khỏi phép so sánh. Tín hiệu "vắng mặt" đang gánh phần lớn thứ phân biệt được một hồ sơ có fit với một hồ sơ không fit.</p>
+        <p>Con số coverage của cả tập và đối chiếu với baseline nằm ở slide benchmark ngay sau đây — 0.486 trên <code>test_500</code> so với 0.000 của cả ba baseline.</p>
+    </div>
+</section>
+<!-- ======================================================================
+     SLIDE 10 — BENCHMARK
+     ====================================================================== -->
+<section class="slide" aria-label="Benchmark agent so với ba baseline">
+    <div class="slide-head">
+        <div class="kicker"><span class="bar"></span>Đo đạc 1 / 3</div>
+        <h2 class="vn">Agent so với ba baseline — ba phản biện, ba câu trả lời</h2>
+        <div class="en">Benchmark against three baselines — three objections, answered</div>
+        <div class="head-rule"></div>
+    </div>
+
+    <div class="slide-body">
+        <div class="row" style="gap:28px; height:100%;">
+
+            <!-- ===== CỘT TRÁI: bảng dev_300 + confusion matrix test_500 ===== -->
+            <div class="col stack" style="width:1010px; flex:none; gap:16px;">
+
+                <table class="swiss reveal">
+                    <thead>
+                        <tr>
+                            <th>System <span style="font-weight:400; text-transform:none; letter-spacing:0; color:var(--ink-3);">(dev_300, n=300)</span></th>
+                            <th class="num">macro-F1</th>
+                            <th class="num">Good Fit recall</th>
+                            <th class="num">Tokens</th>
+                            <th class="num">Evidence (E1)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr class="hero"><td class="mono">agent</td><td class="num">0.4155</td><td class="num">0.176</td><td class="num">1.142.849</td><td class="num">0.439</td></tr>
+                        <tr><td class="mono">baseline_naive</td><td class="num">0.3742</td><td class="num">0.041</td><td class="num">521.102</td><td class="num">0.000</td></tr>
+                        <tr><td class="mono">baseline_rubric</td><td class="num">0.3750</td><td class="num">0.041</td><td class="num">453.321</td><td class="num">0.000</td></tr>
+                        <tr><td class="mono">baseline_tfidf</td><td class="num">0.3673</td><td class="num">0.419</td><td class="num">0</td><td class="num">0.000</td></tr>
+                    </tbody>
+                </table>
+
+                <div class="row" style="gap:20px;">
+                    <div style="width:600px; flex:none;">
+                        <figure class="asset-slot reveal" data-asset="07-confusion-test500.png">
+                            <svg viewBox="0 0 566 330" role="img" aria-label="Confusion matrix 3x3 trên test_500">
+                                <text x="0" y="14" font-family="'Archivo',sans-serif" font-weight="800" font-size="14" fill="#0d0d0d">CONFUSION MATRIX &#183; test_500 (n=500)</text>
+                                <text x="175" y="46" font-family="'IBM Plex Mono',monospace" font-size="12" fill="#6e6e6a" text-anchor="middle">dự đoán Good Fit</text>
+                                <text x="325" y="46" font-family="'IBM Plex Mono',monospace" font-size="12" fill="#6e6e6a" text-anchor="middle">Potential Fit</text>
+                                <text x="475" y="46" font-family="'IBM Plex Mono',monospace" font-size="12" fill="#6e6e6a" text-anchor="middle">No Fit</text>
+
+                                <!-- hàng 1: thật Good Fit -->
+                                <text x="95" y="46" font-family="'IBM Plex Mono',monospace" font-size="11" fill="#6e6e6a" text-anchor="end">NHÃN THẬT &#8595;</text>
+                                <text x="95" y="96" font-family="'IBM Plex Mono',monospace" font-size="11" fill="#0d0d0d" text-anchor="end">Good Fit</text>
+                                <rect x="100" y="56" width="150" height="72" fill="#fbe3dc" stroke="#0d0d0d" stroke-width="3"/>
+                                <text x="175" y="100" font-family="'Archivo',sans-serif" font-weight="800" font-size="24" fill="#0d0d0d" text-anchor="middle">26</text>
+                                <rect x="250" y="56" width="150" height="72" fill="#fbe3dc" stroke="#fff" stroke-width="2"/>
+                                <text x="325" y="100" font-family="'Archivo',sans-serif" font-weight="800" font-size="24" fill="#0d0d0d" text-anchor="middle">31</text>
+                                <rect x="400" y="56" width="150" height="72" fill="#ef8f6e" stroke="#ff3300" stroke-width="4"/>
+                                <text x="475" y="100" font-family="'Archivo',sans-serif" font-weight="800" font-size="24" fill="#0d0d0d" text-anchor="middle">73</text>
+
+                                <!-- hàng 2: thật Potential Fit -->
+                                <text x="95" y="168" font-family="'IBM Plex Mono',monospace" font-size="11" fill="#0d0d0d" text-anchor="end">Potential Fit</text>
+                                <rect x="100" y="128" width="150" height="72" fill="#f6bda9" stroke="#fff" stroke-width="2"/>
+                                <text x="175" y="172" font-family="'Archivo',sans-serif" font-weight="800" font-size="24" fill="#0d0d0d" text-anchor="middle">36</text>
+                                <rect x="250" y="128" width="150" height="72" fill="#f6bda9" stroke="#0d0d0d" stroke-width="3"/>
+                                <text x="325" y="172" font-family="'Archivo',sans-serif" font-weight="800" font-size="24" fill="#0d0d0d" text-anchor="middle">40</text>
+                                <rect x="400" y="128" width="150" height="72" fill="#ef8f6e" stroke="#fff" stroke-width="2"/>
+                                <text x="475" y="172" font-family="'Archivo',sans-serif" font-weight="800" font-size="24" fill="#0d0d0d" text-anchor="middle">50</text>
+
+                                <!-- hàng 3: thật No Fit -->
+                                <text x="95" y="240" font-family="'IBM Plex Mono',monospace" font-size="11" fill="#0d0d0d" text-anchor="end">No Fit</text>
+                                <rect x="100" y="200" width="150" height="72" fill="#f6bda9" stroke="#fff" stroke-width="2"/>
+                                <text x="175" y="244" font-family="'Archivo',sans-serif" font-weight="800" font-size="24" fill="#0d0d0d" text-anchor="middle">36</text>
+                                <rect x="250" y="200" width="150" height="72" fill="#f6bda9" stroke="#fff" stroke-width="2"/>
+                                <text x="325" y="244" font-family="'Archivo',sans-serif" font-weight="800" font-size="24" fill="#0d0d0d" text-anchor="middle">43</text>
+                                <rect x="400" y="200" width="150" height="72" fill="#a32207" stroke="#0d0d0d" stroke-width="3"/>
+                                <text x="475" y="244" font-family="'Archivo',sans-serif" font-weight="800" font-size="24" fill="#ffffff" text-anchor="middle">165</text>
+
+                                <!-- thang màu một sắc -->
+                                <text x="100" y="298" font-family="'IBM Plex Mono',monospace" font-size="12" fill="#6e6e6a">số hàng &#183; thang một sắc, nhạt &#8594; đậm</text>
+                                <rect x="100" y="306" width="60" height="14" fill="#fbe3dc"/>
+                                <rect x="160" y="306" width="60" height="14" fill="#f6bda9"/>
+                                <rect x="220" y="306" width="60" height="14" fill="#ef8f6e"/>
+                                <rect x="280" y="306" width="60" height="14" fill="#e0552b"/>
+                                <rect x="340" y="306" width="60" height="14" fill="#a32207"/>
+                                <text x="408" y="318" font-family="'IBM Plex Mono',monospace" font-size="12" fill="#0d0d0d">0 &#8594; 165</text>
+                            </svg>
+                            <figcaption><b style="color:#c52700;">Ô viền đỏ</b>: 73 hàng nhãn thật Good Fit bị trả về No Fit &#183; viền đen = đường chéo</figcaption>
+                        </figure>
+                    </div>
+
+                    <div class="col stack reveal" style="gap:14px;">
+                        <div class="callout" style="font-size:19px; padding:14px 18px;">
+                            <span class="lbl">Tập khác — test_500</span>
+                            Chạy <b>MỘT</b> lần · macro-F1 <b>0.3939</b> &#183; E1 <b>0.486</b><br>500 hàng, 0 lỗi. Baseline <b>chưa chạy</b> trên tập này.
+                        </div>
+                        <div style="font-family:var(--font-mono); font-size:15px; line-height:1.45; color:var(--ink-3);">
+                            Hai tập <b style="color:var(--ink-2);">không trộn</b>:<br>
+                            bảng trên đo trên <b style="color:var(--ink-2);">dev_300</b>,<br>
+                            ma trận này đo trên <b style="color:var(--ink-2);">test_500</b>.
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ===== CỘT PHẢI: ba phản biện — ba câu trả lời ===== -->
+            <div class="col stack" style="gap:16px;">
+
+                <div class="ans reveal">
+                    <div class="obj"><b>Phản biện</b>&#8220;Hơn baseline mạnh nhất chỉ +0.04 macro-F1, đổi bằng 2,5 lần token.&#8221;</div>
+                    <div class="ttl">Cột cuối không phải chênh lệch — là có và không có</div>
+                    <div class="ev">Evidence coverage <b>0.439</b> so với <b>0.000</b> ở cả ba baseline. Nhãn không truy được về câu nào trong CV thì Annex III không cho triển khai.</div>
+                    <div class="ex">ví dụ — hàng #146: 7 tiêu chí, <b>12 trích dẫn verbatim</b>, 0 rơi, kèm offset ký tự. <i>Giá: ~3.800 token mỗi CV.</i></div>
+                </div>
+
+                <div class="ans reveal">
+                    <div class="obj"><b>Phản biện</b>&#8220;TF-IDF tìm Good Fit giỏi hơn: recall 0.419 so với 0.176, lại 0 token.&#8221;</div>
+                    <div class="ttl">Recall cao vì nó đoán rộng — macro-F1 của nó thấp nhất</div>
+                    <div class="ev">Nó đổi No Fit lấy Good Fit: No Fit F1 <b>0.494</b> so với <b>0.644</b>. Cộng lại còn <b>0.3673</b> — thấp nhất trong bốn hệ.</div>
+                    <div class="ex">trần của bài toán — AUC xếp Good Fit trên Potential: agent 0.482 &#183; tfidf 0.526 &#183; classifier <b>được xem nhãn</b> 0.577. <i>Cả ba sát tung đồng xu.</i></div>
+                </div>
+
+                <div class="ans reveal">
+                    <div class="obj"><b>Phản biện</b>&#8220;Agent cũng loại oan: 73 / 130 hàng nhãn thật Good Fit bị trả về No Fit.&#8221;</div>
+                    <div class="ttl">Loại oan ở đây đo được, tách được, và tắt được</div>
+                    <div class="ev">73 = <b>28</b> do cổng <code class="mono">must_have</code> + <b>45</b> do tầng chấm điểm. Cổng chặn 121 hàng trước khi chấm, precision <b>0.645</b>.</div>
+                    <div class="ex">tắt cổng bằng một cờ ablation: <b>+0.033 macro-F1</b> (dev_300). <i>Sàng lọc từ khóa cũng loại oan — không có con số nào.</i></div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <div class="slide-foot">
+        <div class="src">nguồn: <b>baselines.md</b> &#183; dev_300, n=300 (bảng, AUC) &#183; <b>scoring_layer.md</b> (trần 0.577) &#183; <b>test_shipped.md</b> &#183; n=500 (confusion, cổng must_have) &#183; <b>must_have_gate.md</b> (ablation, dev_300)</div>
+        <div class="pageno">09<span> / 12</span></div>
+    </div>
+
+    <div class="notes">
+        <p><b>Cách trình bày slide này:</b> đọc to cả ba dòng phản biện trước, rồi mới trả lời. Ba con số bất lợi đó do tôi đo và tôi nêu — không phải chỗ tôi quên nói.</p>
+        <p><b>Thẻ 1.</b> Spec &#167;7 dự trù đúng tình huống baseline rubric-in-prompt sát agent: khi đó giá trị của agent phải nằm ở truy vết bằng chứng, xử lý CV lỗi, chặn can thiệp và chi phí. 0.439 so với 0.000 không phải một khoảng cách hơn kém — ba baseline <i>chưa bao giờ sinh ra</i> một trích dẫn để mà đo. Nếu bị hỏi &#8220;+0.04 với 2,5 lần token thì đáng không?&#8221; — tính thuần theo macro-F1 thì <b>không</b>, và đó là lý do E2 chỉ được tuyên là đạt một phần ở slide cuối. Câu trả lời không phải &#8220;đáng vì F1&#8221; mà là: một nhãn không kèm bằng chứng thì không triển khai được cho nhóm nguy cơ cao ở slide 2, nên nó không phải một lựa chọn rẻ hơn.</p>
+        <p><b>Thẻ 2.</b> Recall 0.419 của TF-IDF là thật, và Good Fit F1 của nó (0.356) cũng cao hơn agent (0.236) — nói rõ điểm này. Nhưng nó mua recall bằng cách đẩy hàng ra khỏi No Fit, nên No Fit F1 tụt còn 0.494 và macro-F1 tổng là thấp nhất trong bốn hệ. Chốt bằng trần: trên 149 hàng mang một trong hai nhãn, AUC của agent là 0.482 với khoảng bootstrap [0.386, 0.575]; một classifier có giám sát, cross-validate theo JD, được xem nhãn mà agent không bao giờ thấy, chỉ đạt 0.577. Đó là trần của <i>bài toán</i>, không phải của hệ này. <b>Nếu bị đánh ngược:</b> &#8220;vậy cả hai đều vô dụng&#8221; — đúng với riêng cặp Good/Potential, và đó chính là nội dung slide 10.</p>
+        <p><b>Thẻ 3.</b> Phân rã 73 hàng: <code>test_shipped.md</code> ghi cổng <code>must_have</code> chặn 121 hàng trước khi chấm, trong đó 28 hàng mang nhãn thật Good Fit; <code>reject_fast</code> luôn trả No Fit, nên 28 trong 73 là do cổng, 45 còn lại là do tầng chấm điểm. Tiêu chí chặn nhiều nhất là <code>experience_years</code> (48 / 121 hàng) — nối thẳng về ca demo số 2 ở slide 7, và về hàng #146 nơi CV ghi ngày kiểu <code>01/1-01/1</code>. <b>Hai số này ở hai tập khác nhau:</b> 28/45 đo trên test_500, còn +0.033 khi tắt cổng đo trên dev_300 (<code>must_have_gate.md</code>: 0.3721 &#8594; 0.4052, 33/300 dự đoán đổi, +208k token). Đừng gộp chúng thành một câu.</p>
+        <p><b>Khác biệt thật, nói thẳng:</b> một hệ sàng lọc thông thường cũng loại oan, nhưng không biết mình loại oan bao nhiêu, không tách được lỗi thuộc về khâu nào, và không có công tắc nào để tắt khâu đó đi rồi đo lại.</p>
+    </div>
+</section>
+
+<!-- ======================================================================
+     SLIDE 11 — ORDERING
+     ====================================================================== -->
+<section class="slide" aria-label="Ordering — chỗ hệ thống thật sự hỏng">
+    <div class="slide-head">
+        <div class="kicker"><span class="bar"></span>Đo đạc 2 / 3</div>
+        <h2 class="vn">Chỗ hệ thống thật sự hỏng: thứ tự bị đảo</h2>
+        <div class="en">Where the ordering breaks</div>
+        <div class="head-rule"></div>
+    </div>
+
+    <div class="slide-body">
+        <figure class="asset-slot reveal" data-asset="08-score-distribution.png">
+            <svg viewBox="0 0 1560 300" role="img" aria-label="Phân bố điểm theo nhãn thật, cho thấy median Potential Fit cao hơn median Good Fit">
+                <!-- trục -->
+                <line x1="250" y1="250" x2="1480" y2="250" stroke="#0d0d0d" stroke-width="2"/>
+                <g font-family="'IBM Plex Mono',monospace" font-size="14" fill="#6e6e6a">
+                    <line x1="250"  y1="250" x2="250"  y2="258" stroke="#0d0d0d" stroke-width="2"/><text x="250"  y="278" text-anchor="middle">0.00</text>
+                    <line x1="496"  y1="250" x2="496"  y2="258" stroke="#0d0d0d" stroke-width="2"/><text x="496"  y="278" text-anchor="middle">0.20</text>
+                    <line x1="742"  y1="250" x2="742"  y2="258" stroke="#0d0d0d" stroke-width="2"/><text x="742"  y="278" text-anchor="middle">0.40</text>
+                    <line x1="988"  y1="250" x2="988"  y2="258" stroke="#0d0d0d" stroke-width="2"/><text x="988"  y="278" text-anchor="middle">0.60</text>
+                    <line x1="1234" y1="250" x2="1234" y2="258" stroke="#0d0d0d" stroke-width="2"/><text x="1234" y="278" text-anchor="middle">0.80</text>
+                    <line x1="1480" y1="250" x2="1480" y2="258" stroke="#0d0d0d" stroke-width="2"/><text x="1480" y="278" text-anchor="middle">1.00</text>
+                </g>
+                <text x="0" y="16" font-family="'Archivo',sans-serif" font-weight="800" font-size="15" fill="#0d0d0d">PHÂN BỐ overall_score THEO NHÃN THẬT · min / p25 / median / p75 / max</text>
+
+                <!-- Good Fit: 0.000 0.200 0.350 0.564 0.950 -->
+                <g>
+                    <text x="230" y="62" font-family="'IBM Plex Mono',monospace" font-size="15" fill="#0d0d0d" text-anchor="end">Good Fit  n=74</text>
+                    <line x1="250" y1="56" x2="1418" y2="56" stroke="#6e6e6a" stroke-width="2"/>
+                    <line x1="250" y1="44" x2="250" y2="68" stroke="#6e6e6a" stroke-width="2"/>
+                    <line x1="1418" y1="44" x2="1418" y2="68" stroke="#6e6e6a" stroke-width="2"/>
+                    <rect x="496" y="40" width="448" height="32" fill="#ffd9cf" stroke="#0d0d0d" stroke-width="2"/>
+                    <line x1="680" y1="36" x2="680" y2="76" stroke="#ff3300" stroke-width="5"/>
+                    <text x="680" y="30" font-family="'IBM Plex Mono',monospace" font-size="15" font-weight="600" fill="#c52700" text-anchor="middle">median 0.350</text>
+                    <text x="1430" y="62" font-family="'IBM Plex Mono',monospace" font-size="13" fill="#6e6e6a">max 0.950</text>
+                </g>
+
+                <!-- Potential Fit: 0.000 0.136 0.490 0.625 0.950 -->
+                <g>
+                    <text x="230" y="146" font-family="'IBM Plex Mono',monospace" font-size="15" fill="#0d0d0d" text-anchor="end">Potential Fit  n=75</text>
+                    <line x1="250" y1="140" x2="1418" y2="140" stroke="#6e6e6a" stroke-width="2"/>
+                    <line x1="250" y1="128" x2="250" y2="152" stroke="#6e6e6a" stroke-width="2"/>
+                    <line x1="1418" y1="128" x2="1418" y2="152" stroke="#6e6e6a" stroke-width="2"/>
+                    <rect x="417" y="124" width="601" height="32" fill="#cdd9fa" stroke="#0d0d0d" stroke-width="2"/>
+                    <line x1="853" y1="120" x2="853" y2="160" stroke="#1f4fd8" stroke-width="5"/>
+                    <text x="853" y="176" font-family="'IBM Plex Mono',monospace" font-size="15" font-weight="600" fill="#1f4fd8" text-anchor="middle">median 0.490</text>
+                    <text x="1430" y="146" font-family="'IBM Plex Mono',monospace" font-size="13" fill="#6e6e6a">max 0.950</text>
+                </g>
+
+                <!-- mũi tên đảo thứ tự -->
+                <path d="M680,84 L680,100 L853,100 L853,116" fill="none" stroke="#ff3300" stroke-width="3" stroke-dasharray="6 4"/>
+                <text x="766" y="94" font-family="'Archivo',sans-serif" font-weight="800" font-size="15" fill="#ff3300" text-anchor="middle">THỨ TỰ BỊ ĐẢO</text>
+
+                <!-- No Fit: 0.000 0.000 0.238 0.476 1.000 -->
+                <g>
+                    <text x="230" y="222" font-family="'IBM Plex Mono',monospace" font-size="15" fill="#0d0d0d" text-anchor="end">No Fit  n=151</text>
+                    <line x1="250" y1="216" x2="1480" y2="216" stroke="#6e6e6a" stroke-width="2"/>
+                    <line x1="250" y1="204" x2="250" y2="228" stroke="#6e6e6a" stroke-width="2"/>
+                    <line x1="1480" y1="204" x2="1480" y2="228" stroke="#6e6e6a" stroke-width="2"/>
+                    <rect x="250" y="200" width="586" height="32" fill="#ebebe6" stroke="#0d0d0d" stroke-width="2"/>
+                    <line x1="543" y1="196" x2="543" y2="236" stroke="#0d0d0d" stroke-width="5"/>
+                    <text x="543" y="190" font-family="'IBM Plex Mono',monospace" font-size="15" font-weight="600" fill="#0d0d0d" text-anchor="middle">median 0.238</text>
+                    <text x="1492" y="222" font-family="'IBM Plex Mono',monospace" font-size="13" fill="#6e6e6a">1.000</text>
+                </g>
+                <text x="250" y="296" font-family="'IBM Plex Mono',monospace" font-size="13" fill="#6e6e6a">hộp = p25 … p75 · râu = min … max · vạch đậm = median</text>
+            </svg>
+            <figcaption>Giữa <code>Good Fit</code> và <code>Potential Fit</code>, thứ tự không yếu — nó <b>bị đảo</b></figcaption>
+        </figure>
+
+        <div class="row" style="margin-top:16px; gap:30px;">
+            <div class="col" style="flex:1.25;">
+                <ul class="points reveal">
+                    <li style="font-size:23px; margin-bottom:14px;">AUC <b>0.482</b>, bootstrap 95% <b>[0.386, 0.575]</b> — chứa cả mức ngẫu nhiên</li>
+                    <li style="font-size:23px; margin-bottom:14px;">Trần trên: classifier <b>có giám sát</b> cũng chỉ đạt <b>0.577</b></li>
+                    <li style="font-size:23px; margin-bottom:14px;">Chỉnh lại ngưỡng cắt được nhiều nhất <b>+0.0210</b> — và đã overfit</li>
+                    <li style="font-size:23px; margin-bottom:0;">Power <b>0.37</b>; cần <b>~436 hàng</b> contested mới đạt 0.80</li>
+                </ul>
+            </div>
+            <div class="col stack" style="flex:1;">
+                <div class="callout reveal" style="font-size:21px;">
+                    <span class="lbl">Thang điểm thật sự là gì</span>
+                    <b>87,7%</b> điểm tiêu chí đúng bằng <b>0.0 · 0.5 · 1.0</b> — model trả lời <i>không / có thể / có</i>.
+                </div>
+                <div class="philosophy reveal" style="font-size:22px; line-height:1.28;">
+                    Một thay đổi <span>không đo được</span> thì không nên làm chỉ vì có một câu chuyện hay về lý do nó nên hiệu quả.
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="slide-foot">
+        <div class="src">nguồn: <b>docs/measurements/scoring_layer.md</b> · dev_300 · 149 hàng contested (74 Good Fit / 75 Potential Fit) · 1906 điểm tiêu chí</div>
+        <div class="pageno">10<span> / 12</span></div>
+    </div>
+
+    <div class="notes">
+        <p>Đây là slide tôi muốn người nghe nhớ nhất, và nó nói hệ thống hỏng chứ không nói hệ thống tốt. Median của <code>Potential Fit</code> thật (0.490) cao hơn median của <code>Good Fit</code> thật (0.350) — giữa hai lớp này thứ tự bị đảo, và AUC 0.482 nói đúng điều đó bằng đơn vị khác.</p>
+        <p><b>Phản biện dễ nhất:</b> "Vậy sửa scoring layer đi." Không sửa được bằng dữ liệu đang có: khoảng bootstrap [0.386, 0.575] chứa cả mức ngẫu nhiên lẫn trần trên 0.577, nghĩa là split này <b>không phân biệt được</b> ba dòng đó với nhau. Power 0.37; cần ~436 hàng contested mới đạt 0.80, không split nào của dự án có đủ.</p>
+        <p>Nếu bị hỏi về việc bỏ các tiêu chí 0.0 khỏi tổng: đã thử. Cặp contested vẫn ở mức ngẫu nhiên (0.524), cặp tách được thì tệ đi (0.628 → 0.564), và 56 hàng rụng khỏi phép so sánh.</p>
+    </div>
+</section>
+<!-- ======================================================================
+     SLIDE 12 — LƯU LƯỢNG NHÁNH & ĐÓNG GÓP TỪNG MODULE
+     ====================================================================== -->
+<section class="slide" aria-label="Lưu lượng nhánh và đóng góp từng module">
+    <div class="slide-head">
+        <div class="kicker"><span class="bar"></span>Đo đạc 3 / 3</div>
+        <h2 class="vn">Lưu lượng nhánh &amp; đóng góp từng module</h2>
+        <div class="en">Branch traffic and per-module contribution</div>
+        <div class="head-rule"></div>
+    </div>
+
+    <div class="slide-body">
+        <figure class="asset-slot reveal" data-asset="09-branch-traffic.png">
+            <svg viewBox="0 0 1560 240" role="img" aria-label="Lưu lượng bốn nhánh và delta macro-F1 của từng ablation">
+                <defs>
+                    <pattern id="hatch" patternUnits="userSpaceOnUse" width="8" height="8" patternTransform="rotate(45)">
+                        <rect width="8" height="8" fill="#ebebe6"/>
+                        <line x1="0" y1="0" x2="0" y2="8" stroke="#9a9a96" stroke-width="3"/>
+                    </pattern>
+                </defs>
+
+                <!-- ===== TRÁI: lưu lượng 4 nhánh ===== -->
+                <g>
+                    <text x="0" y="14" font-family="'Archivo',sans-serif" font-weight="800" font-size="14" fill="#0d0d0d">LƯU LƯỢNG 4 NHÁNH · test_500 (n=500) <tspan font-family="'IBM Plex Mono',monospace" font-weight="400" fill="#6e6e6a">· trục 0 → 30%</tspan></text>
+                    <line x1="260" y1="30" x2="260" y2="192" stroke="#0d0d0d" stroke-width="1.5"/>
+                    <text x="252" y="54" font-family="'IBM Plex Mono',monospace" font-size="13" fill="#0d0d0d" text-anchor="end">guard → quarantine</text>
+                    <rect x="260" y="40" width="3" height="20" fill="#ff3300"/>
+                    <text x="272" y="55" font-family="'IBM Plex Mono',monospace" font-size="13" fill="#0d0d0d">0.2% <tspan fill="#6e6e6a">(1 hàng)</tspan></text>
+                    <text x="252" y="94" font-family="'IBM Plex Mono',monospace" font-size="13" fill="#0d0d0d" text-anchor="end">extract → repair</text>
+                    <rect x="260" y="80" width="22" height="20" fill="#ff3300"/>
+                    <text x="291" y="95" font-family="'IBM Plex Mono',monospace" font-size="13" fill="#0d0d0d">1.4% <tspan fill="#6e6e6a">(7 hàng)</tspan></text>
+                    <text x="252" y="134" font-family="'IBM Plex Mono',monospace" font-size="13" fill="#0d0d0d" text-anchor="end">must_have_check → reject_fast</text>
+                    <rect x="260" y="120" width="371" height="20" fill="#ff3300"/>
+                    <text x="640" y="135" font-family="'IBM Plex Mono',monospace" font-size="13" fill="#0d0d0d">24.2% <tspan fill="#6e6e6a">(121 hàng)</tspan></text>
+                    <text x="252" y="174" font-family="'IBM Plex Mono',monospace" font-size="13" fill="#0d0d0d" text-anchor="end">aggregate → deep_review</text>
+                    <rect x="260" y="160" width="236" height="20" fill="#ff3300"/>
+                    <text x="505" y="175" font-family="'IBM Plex Mono',monospace" font-size="13" fill="#0d0d0d">15.4% <tspan fill="#6e6e6a">(77 hàng)</tspan></text>
+                    <text x="260" y="216" font-family="'IBM Plex Mono',monospace" font-size="12" fill="#6e6e6a">bốn conditional edge, bốn con số lưu lượng thật</text>
+                </g>
+
+                <line x1="770" y1="10" x2="770" y2="225" stroke="#e8e8e4" stroke-width="2"/>
+
+                <!-- ===== PHẢI: delta macro-F1 (diverging) ===== -->
+                <g>
+                    <text x="800" y="14" font-family="'Archivo',sans-serif" font-weight="800" font-size="14" fill="#0d0d0d">ĐÓNG GÓP CỦA MODULE VÀO macro-F1 · dev_300 (n=300)</text>
+                    <line x1="1180" y1="30" x2="1180" y2="196" stroke="#0d0d0d" stroke-width="2"/>
+                    <g font-family="'IBM Plex Mono',monospace" font-size="12" fill="#6e6e6a">
+                        <text x="980"  y="214" text-anchor="middle">−0.04</text>
+                        <text x="1180" y="214" text-anchor="middle">0</text>
+                        <text x="1380" y="214" text-anchor="middle">+0.04</text>
+                        <line x1="980"  y1="196" x2="980"  y2="202" stroke="#6e6e6a" stroke-width="1.5"/>
+                        <line x1="1380" y1="196" x2="1380" y2="202" stroke="#6e6e6a" stroke-width="1.5"/>
+                    </g>
+                    <!-- must_have_gate: -0.0331 -->
+                    <text x="800" y="52" font-family="'IBM Plex Mono',monospace" font-size="13" fill="#0d0d0d">must_have_gate</text>
+                    <rect x="1014" y="38" width="166" height="22" fill="#ff3300" rx="2"/>
+                    <text x="1006" y="54" font-family="'IBM Plex Mono',monospace" font-size="13" font-weight="600" fill="#c52700" text-anchor="end">−0.0331</text>
+                    <!-- no_gray_zone: +0.0140 -->
+                    <text x="800" y="112" font-family="'IBM Plex Mono',monospace" font-size="13" fill="#0d0d0d">gray_zone (deep_review)</text>
+                    <rect x="1180" y="98" width="70" height="22" fill="#1f4fd8" rx="2"/>
+                    <text x="1258" y="114" font-family="'IBM Plex Mono',monospace" font-size="13" font-weight="600" fill="#1f4fd8">+0.0140</text>
+                    <!-- no_guard: không đo bằng macro-F1 -->
+                    <text x="800" y="172" font-family="'IBM Plex Mono',monospace" font-size="13" fill="#0d0d0d">guard</text>
+                    <rect x="1130" y="158" width="100" height="22" fill="url(#hatch)" stroke="#9a9a96" stroke-width="1.5"/>
+                    <text x="1242" y="174" font-family="'IBM Plex Mono',monospace" font-size="13" fill="#6e6e6a">không đo bằng macro-F1</text>
+                    <text x="800" y="192" font-family="'IBM Plex Mono',monospace" font-size="12" fill="#c52700">đo trên 8 hàng fixture TỔNG HỢP, không phải dev_300</text>
+                </g>
+            </svg>
+            <figcaption>Trái: lưu lượng thật (test_500) · Phải: delta macro-F1 khi tắt từng module (dev_300)</figcaption>
+        </figure>
+
+        <table class="swiss reveal" style="margin-top:14px;">
+            <thead>
+                <tr><th style="width:250px;">Ablation</th><th style="width:830px;">Đo được</th><th>Đọc thế nào</th></tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td class="mono" style="font-size:20px; color:var(--red-deep); font-weight:600;">must_have_gate</td>
+                    <td style="font-size:20px;"><b>0.3721</b> vs <b>0.4052</b> khi tắt (<b>−0.0331</b>) · tiết kiệm <b>208.127</b> token<br><code>test_500</code>: loại <b>121</b> hàng, precision <b>0.645</b>, <b>28</b> hàng thật là Good Fit</td>
+                    <td style="font-size:20px;"><b>Đổi độ chính xác lấy token</b>, không phải cải thiện miễn phí</td>
+                </tr>
+                <tr>
+                    <td class="mono" style="font-size:20px; color:var(--red-deep); font-weight:600;">no_gray_zone</td>
+                    <td style="font-size:20px;"><b>0.4155</b> vs <b>0.4014</b> (<b>+0.0140</b>) · <b>20/300</b> dự đoán đổi</td>
+                    <td style="font-size:20px;"><code>deep_review</code> có đóng góp — nhỏ, và <b>đo được</b></td>
+                </tr>
+                <tr>
+                    <td class="mono" style="font-size:20px; color:var(--red-deep); font-weight:600;">no_guard</td>
+                    <td style="font-size:20px;"><b>HIGH</b> 6/6 quarantine; tắt guard cả 6 chấm <b>0.550 — y như hàng sạch</b><br><b>LOW</b> 0/2 đổi <span style="color:var(--ink-3);">— hai mức không gộp làm một</span></td>
+                    <td style="font-size:20px;">Guard <b>từ chối xử lý</b>, chứ không ngăn được một can thiệp lẽ ra thành công</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div class="row reveal" style="margin-top:16px; gap:26px;">
+            <div class="col warn-line" style="font-size:20px; flex:1;">
+                Hàng <em>no_guard</em> là <em>TỔNG HỢP</em>: <em>0 / 300</em> CV thật kích hoạt rule nào.
+            </div>
+            <div class="col" style="flex:1.15; border:3px solid var(--red); padding:13px 18px; font-family:var(--font-body); font-size:20px; line-height:1.3; color:var(--ink);">
+                <b>Cổng này loại người vì không khớp tiêu chí nguyên văn</b> — đúng cái lỗi của sàng lọc từ khóa. Khác ở chỗ cái giá <b>đo được</b> và cổng <b>tắt được</b>.
+            </div>
+        </div>
+    </div>
+
+    <div class="slide-foot">
+        <div class="src">nguồn: <b>must_have_gate.md</b> · <b>no_gray_zone.md</b> · dev_300 · <b>no_guard.md</b> · fixture 6 HIGH + 2 LOW · <b>test_shipped.md</b> · n=500</div>
+        <div class="pageno">11<span> / 12</span></div>
+    </div>
+
+    <div class="notes">
+        <p>Ba ablation, ba cách đọc khác nhau, và không cái nào được gộp thành một con số "đóng góp của agent". Cổng <code>must_have</code> là cái đắt nhất: nó <b>làm giảm</b> macro-F1 0.0331 để đổi lấy 208.127 token.</p>
+        <p><b>Phản biện dễ nhất:</b> "Vậy tắt cổng đi cho xong?" Đó chính là lựa chọn mà số đo mở ra — nhưng tắt cổng là trả thêm khoảng 20% token mỗi lần chạy. Điều chúng tôi khẳng định không phải cổng đúng hay sai, mà là <b>cái giá của nó đã được đo</b>, nên đây là một lựa chọn chứ không phải một mặc định.</p>
+        <p>Về guard: tôi <b>không</b> tuyên bố guard chặn được tấn công. Sáu hàng bị đầu độc chấm đúng 0.550 — y hệt hàng sạch — kể cả khi tắt guard. Giá trị của guard là từ chối xử lý một tài liệu đang cố can thiệp, không phải ngăn một can thiệp lẽ ra sẽ thành công. Và các hàng đó là fixture tổng hợp, vì 0/300 CV thật kích hoạt rule nào.</p>
+        <p>Cho đủ: cổng <code>must_have</code> giải thích 28 trong 73 hàng Good Fit bị trả về No Fit trên <code>test_500</code>; phần còn lại nằm ở tầng chấm điểm, tức slide 10.</p>
+    </div>
+</section>
+
+<!-- ======================================================================
+     SLIDE 13 — KẾT LUẬN, BÀI HỌC & QA
+     ====================================================================== -->
+<section class="slide" aria-label="Kết luận, bài học nghiên cứu và QA">
+    <div class="slide-head">
+        <div class="kicker"><span class="bar"></span>Kết luận</div>
+        <h2 class="vn">Đã chứng minh được gì, và mang về được gì</h2>
+        <div class="en">Conclusions, research lessons &amp; QA</div>
+        <div class="head-rule"></div>
+    </div>
+
+    <div class="slide-body">
+        <div class="row" style="gap:44px;">
+            <div class="col reveal" style="flex:0.92;">
+                <div class="two-col-head">Đã chứng minh được gì <span>/ what holds</span></div>
+                <ul class="points" style="font-size:23px;">
+                    <li style="font-size:23px;"><b>E1 đạt và đo được</b>: 0.486 so với 0.000 của mọi baseline</li>
+                    <li style="font-size:23px;"><b>E2 chỉ đạt một phần</b>: +0.04 macro-F1, 2,5 lần token</li>
+                    <li style="font-size:23px;">Giá trị thật: <b>truy vết</b>, <b>chi phí đường tắt</b>, <b>xử lý CV lỗi</b></li>
+                    <li style="font-size:23px;">Tái lập: <code>temperature=0</code>, cache JSONL, log token từng nhánh</li>
+                    <li style="font-size:23px;">Mọi số trên slide sinh từ <b>một lệnh duy nhất</b></li>
+                </ul>
+                <div class="callout" style="margin-top:22px; font-size:20px; border-color:var(--ink);">
+                    <span class="lbl" style="color:var(--ink);">Cố ý không làm (spec §11)</span>
+                    OCR · tiếng Việt trong luồng đo · vector DB / GraphRAG · tự động loại ứng viên
+                </div>
+            </div>
+
+            <div class="col reveal" style="flex:1.08;">
+                <div class="two-col-head">Bài học mang về được <span>/ transferable lessons</span></div>
+                <ol class="lessons" style="margin-top:4px;">
+                    <li style="font-size:23px; margin-bottom:20px;"><b>Nhánh không có số đo là nhánh trang trí.</b></li>
+                    <li style="font-size:23px; margin-bottom:20px;"><b>Đừng bắt LLM làm việc của thuật toán</b> — 198/290 CV chồng lấn.</li>
+                    <li style="font-size:23px; margin-bottom:20px;"><b>Đo baseline mạnh trước khi mừng</b> — prompt hỏng cho 0.2405.</li>
+                    <li style="font-size:23px; margin-bottom:20px;"><b>Tách bất ổn khỏi thiên lệch</b> — p = 0.024 so với p = 0.635.</li>
+                    <li style="font-size:23px; margin-bottom:0;"><b>Đo trước khi mô tả</b> — giữ <code class="mono">extraction_confidence</code>, không route.</li>
+                </ol>
+            </div>
+        </div>
+
+        <div class="reveal" style="margin-top:22px; border-top:3px solid var(--ink); padding-top:12px; font-family:var(--font-body); font-size:21px; color:var(--ink-2);">
+            <b style="color:var(--ink);">Việc tiếp theo, đã biết cỡ:</b> cần <b>~436 hàng</b> contested để trả lời câu hỏi ordering — lấy thêm dữ liệu, không chỉnh thêm ngưỡng.
+        </div>
+
+        <div class="closing-quote reveal" style="margin-top:18px;">
+            “Chúng tôi không có một hệ thống chính xác. Chúng tôi có một hệ thống biết mình sai ở đâu, sai bao nhiêu, và đo được điều đó.”
+            <span style="display:block; font-family:var(--font-mono); font-weight:400; font-size:19px; margin-top:10px; color:#ffd9cf;">Q&amp;A · mọi con số trên slide đều có file nguồn ở chân slide</span>
+        </div>
+    </div>
+
+    <div class="slide-foot">
+        <div class="src">nguồn: <b>test_shipped.md</b> · <b>baselines.md</b> · <b>experience.py</b> · <b>bias_school.md</b> / <b>bias_identity.md</b> · <b>extraction_confidence.md</b> · <b>scoring_layer.md</b> · <b>spec §8, §11</b></div>
+        <div class="pageno">12<span> / 12</span></div>
+    </div>
+
+    <div class="notes">
+        <p>Kết bài bằng đúng một câu: chúng tôi không có một hệ thống chính xác, chúng tôi có một hệ thống biết mình sai ở đâu và đo được điều đó. Sáu bài học bên phải dùng lại được cho bất kỳ agent nhiều bước nào, không riêng bài toán CV.</p>
+        <p>Chi tiết từng bài học nếu được hỏi. (2) 198/290 CV dev có khoảng thời gian chồng lấn — đó là lý do <code>calculate_experience</code> tồn tại, một con số đo được chứ không phải trực giác. (3) Prompt rubric đầu tiên sập về <code>No Fit</code> trên 297/300 hàng, macro-F1 0.2405; nay <code>eval/report.py</code> tự cảnh báo mọi run có 95% cùng một nhãn. (5) <code>extraction_confidence</code> xuống 0.00 trên 23,8% lần trích xuất và chỉ nhận 4 giá trị; nó <b>có</b> thông tin nhưng dư thừa, vì <code>total_experience_years is None</code> trả lời đúng câu đó, tất định và miễn phí.</p>
+        <p><b>Phản biện dễ nhất:</b> "Counterfactual trường học p = 0.024 — vậy hệ thống thiên lệch?" Chính xác là: các dịch chuyển <b>có cùng một hướng</b> trên 261 cặp (72 cặp đổi điểm, 24 đổi nhãn), đó là bằng chứng về hướng chứ không phải về độ lớn; nhánh danh tính p = 0.635 cho thấy không phải cái gì cũng lệch. Quan trọng hơn: điểm <b>dịch chuyển</b> khi lẽ ra không được dịch chuyển — đó là bất ổn, một defect riêng, độc lập với thiên lệch. Mean delta gần 0 không chứng minh công bằng.</p>
+    </div>
+</section>
+
+</main>
+</div>
+
+<!-- ==========================================================
+     CHROME NGOÀI SÂN KHẤU: speaker notes + edit mode
+     ========================================================== -->
+<div class="edit-hotzone" aria-hidden="true"></div>
+<button class="edit-toggle" id="editToggle" title="Chế độ sửa chữ (E)" aria-label="Chế độ sửa chữ">✏️</button>
+<div id="notesPanel" role="region" aria-label="Speaker notes"></div>
+<div id="hint">← → / Space: chuyển slide · N: speaker notes · F: toàn màn hình · E: sửa chữ</div>
+
+<script>
+/* ==========================================================
+   ĐIỀU KHIỂN TRÌNH CHIẾU
+   - Sân khấu cố định 1920×1080, scale bằng MỘT transform.
+   - Điều hướng: mũi tên / Space / PageUp-Down / Home-End / vuốt.
+   - N: bật tắt speaker notes. F: toàn màn hình. E: sửa chữ tại chỗ.
+   ========================================================== */
+class SlidePresentation {
+    constructor() {
+        this.slides = Array.from(document.querySelectorAll('.slide'));
+        this.stage = document.getElementById('deckStage');
+        this.notesPanel = document.getElementById('notesPanel');
+        this.current = 0;
+        this.notesOn = false;
+        this.setupStageScale();
+        this.setupKeyboardNav();
+        this.setupTouchNav();
+        this.setupWheelNav();
+        this.showSlide(this.readHash());
+        window.addEventListener('hashchange', () => this.showSlide(this.readHash()));
+    }
+
+    readHash() {
+        const n = parseInt((location.hash || '').replace('#', ''), 10);
+        return Number.isFinite(n) ? n - 1 : 0;
+    }
+
+    /* Scale toàn bộ sân khấu cho vừa cửa sổ; letterbox chứ không reflow. */
+    setupStageScale() {
+        const scale = () => {
+            const factor = Math.min(window.innerWidth / 1920, window.innerHeight / 1080);
+            const x = (window.innerWidth - 1920 * factor) / 2;
+            const y = (window.innerHeight - 1080 * factor) / 2;
+            this.stage.style.transform = `translate(${x}px, ${y}px) scale(${factor})`;
+        };
+        scale();
+        window.addEventListener('resize', scale);
+    }
+
+    setupKeyboardNav() {
+        document.addEventListener('keydown', (e) => {
+            if (e.target.getAttribute && e.target.getAttribute('contenteditable') === 'true') return;
+            switch (e.key) {
+                case 'ArrowRight': case 'ArrowDown': case ' ': case 'PageDown':
+                    e.preventDefault(); this.next(); break;
+                case 'ArrowLeft': case 'ArrowUp': case 'PageUp':
+                    e.preventDefault(); this.prev(); break;
+                case 'Home': e.preventDefault(); this.showSlide(0); break;
+                case 'End': e.preventDefault(); this.showSlide(this.slides.length - 1); break;
+                case 'n': case 'N': this.toggleNotes(); break;
+                case 'f': case 'F': this.toggleFullscreen(); break;
+            }
+        });
+    }
+
+    setupTouchNav() {
+        let x0 = null;
+        document.addEventListener('touchstart', (e) => { x0 = e.changedTouches[0].clientX; }, { passive: true });
+        document.addEventListener('touchend', (e) => {
+            if (x0 === null) return;
+            const dx = e.changedTouches[0].clientX - x0;
+            if (Math.abs(dx) > 60) { dx < 0 ? this.next() : this.prev(); }
+            x0 = null;
+        }, { passive: true });
+    }
+
+    setupWheelNav() {
+        let lock = false;
+        document.addEventListener('wheel', (e) => {
+            if (lock) return;
+            if (Math.abs(e.deltaY) < 24) return;
+            lock = true;
+            e.deltaY > 0 ? this.next() : this.prev();
+            setTimeout(() => { lock = false; }, 600);
+        }, { passive: true });
+    }
+
+    next() { this.showSlide(this.current + 1); }
+    prev() { this.showSlide(this.current - 1); }
+
+    showSlide(index) {
+        this.current = Math.max(0, Math.min(index, this.slides.length - 1));
+        this.slides.forEach((slide, i) => {
+            const on = i === this.current;
+            slide.classList.toggle('active', on);
+            slide.classList.toggle('visible', on);
+        });
+        history.replaceState(null, '', '#' + (this.current + 1));
+        this.renderNotes();
+    }
+
+    /* Speaker notes nằm trong khối .notes ẩn của từng slide. */
+    renderNotes() {
+        const src = this.slides[this.current].querySelector('.notes');
+        this.notesPanel.innerHTML =
+            '<h4>Speaker notes · slide ' + (this.current + 1) + ' / ' + this.slides.length + '</h4>' +
+            (src ? src.innerHTML : '<p>(không có ghi chú)</p>');
+    }
+
+    toggleNotes() {
+        this.notesOn = !this.notesOn;
+        this.notesPanel.classList.toggle('on', this.notesOn);
+    }
+
+    toggleFullscreen() {
+        if (!document.fullscreenElement) { document.documentElement.requestFullscreen?.(); }
+        else { document.exitFullscreen?.(); }
+    }
+}
+
+/* ==========================================================
+   SỬA CHỮ TẠI CHỖ (inline editing)
+   Hover góc trên trái hoặc bấm E. Ctrl+S để tải file đã sửa.
+   ========================================================== */
+class InlineEditor {
+    constructor(deck) {
+        this.deck = deck;
+        this.isActive = false;
+        this.selector = 'h1,h2,h3,p,li,td,th,figcaption,.src,.body,.callout,.warn-line,.philosophy,.quote-block,.t-sub,.t-sub-en,.t-by';
+        document.addEventListener('keydown', (e) => {
+            if (e.ctrlKey && (e.key === 's' || e.key === 'S')) { e.preventDefault(); this.save(); }
+        });
+    }
+    toggleEditMode() {
+        this.isActive = !this.isActive;
+        document.body.classList.toggle('editing', this.isActive);
+        document.getElementById('editToggle').classList.toggle('active', this.isActive);
+        document.querySelectorAll('.deck-stage ' + this.selector).forEach((el) => {
+            if (this.isActive) { el.setAttribute('contenteditable', 'true'); }
+            else { el.removeAttribute('contenteditable'); }
+        });
+    }
+    save() {
+        document.querySelectorAll('[contenteditable]').forEach((el) => el.removeAttribute('contenteditable'));
+        const blob = new Blob(['<!DOCTYPE html>\n' + document.documentElement.outerHTML], { type: 'text/html' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = 'cv-screener-agent.html';
+        a.click();
+        if (this.isActive) { this.isActive = false; this.toggleEditMode(); }
+    }
+}
+
+const deck = new SlidePresentation();
+const editor = new InlineEditor(deck);
+
+/* Hotzone hiện nút sửa, có 400ms ân hạn để chuột kịp di tới nút. */
+(function () {
+    const hotzone = document.querySelector('.edit-hotzone');
+    const editToggle = document.getElementById('editToggle');
+    let hideTimeout = null;
+    const show = () => { clearTimeout(hideTimeout); editToggle.classList.add('show'); };
+    const hide = () => {
+        hideTimeout = setTimeout(() => { if (!editor.isActive) editToggle.classList.remove('show'); }, 400);
+    };
+    hotzone.addEventListener('mouseenter', show);
+    hotzone.addEventListener('mouseleave', hide);
+    editToggle.addEventListener('mouseenter', show);
+    editToggle.addEventListener('mouseleave', hide);
+    hotzone.addEventListener('click', () => editor.toggleEditMode());
+    editToggle.addEventListener('click', () => editor.toggleEditMode());
+    document.addEventListener('keydown', (e) => {
+        if ((e.key === 'e' || e.key === 'E') && !(e.target.getAttribute && e.target.getAttribute('contenteditable'))) {
+            editor.toggleEditMode();
+        }
+    });
+})();
+</script>
+</body>
+</html>
