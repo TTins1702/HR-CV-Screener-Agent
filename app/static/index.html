@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>HR CV Screener Agent — Autonomous Multi-Step Evaluation</title>
-  <link rel="stylesheet" href="/static/css/style.css?v=20260917_04">
+  <link rel="stylesheet" href="/static/css/style.css?v=20260918_02">
 </head>
 <body>
 
@@ -48,45 +48,39 @@
           <div style="font-size: 0.75rem; opacity: 0.85;">Kỳ vọng: <code id="expectedBranch"></code></div>
         </div>
 
-        <!-- CV Input Area -->
-        <div class="form-group">
-          <div style="display: flex; justify-content: space-between; align-items: center;">
-            <label class="form-label">CV ứng viên / Resume:</label>
-            <div class="tab-nav" style="margin-bottom: 0;">
-              <button class="tab-btn active" id="tabCvText">Văn bản</button>
-              <button class="tab-btn" id="tabCvUpload">Tải file lên</button>
-            </div>
-          </div>
-          
-          <div id="cvTextInputWrapper">
-            <textarea id="cvText" class="form-textarea" placeholder="Dán nội dung CV ứng viên tại đây..."></textarea>
-          </div>
-
-          <div id="cvUploadWrapper" style="display: none;">
-            <div id="dropzone" class="dropzone-box">
-              <div style="font-size: 1.5rem; margin-bottom: 0.25rem;">📄</div>
-              <div style="font-size: 0.82rem; font-weight: 600; color: var(--text-primary);">Nhấp hoặc Kéo & Thả CV (.pdf, .txt, .md)</div>
-              <div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 0.2rem;">Tự động trích xuất văn bản bằng pdfplumber</div>
-              <input type="file" id="fileInput" accept=".pdf,.txt,.md" style="display: none;">
-            </div>
-            <div id="uploadStatus" style="font-size: 0.78rem; color: var(--text-secondary); margin-top: 0.35rem;"></div>
-          </div>
+        <!-- Document actions: each opens a full-size editor in a modal -->
+        <div class="doc-action-row">
+          <button type="button" class="doc-action-btn" id="btnOpenCv">
+            <span class="doc-action-icon">📄</span>
+            <span>Upload CV</span>
+          </button>
+          <button type="button" class="doc-action-btn" id="btnOpenJd">
+            <span class="doc-action-icon">📋</span>
+            <span>Upload JD</span>
+          </button>
+          <button type="button" class="doc-action-btn" id="btnOpenRubric">
+            <span class="doc-action-icon">⚖️</span>
+            <span>Tiêu chí chấm điểm</span>
+          </button>
         </div>
 
-        <!-- JD Input Area -->
-        <div class="form-group">
-          <label class="form-label" for="jdText">Mô tả công việc (Job Description - JD):</label>
-          <textarea id="jdText" class="form-textarea" style="min-height: 100px;" placeholder="Dán yêu cầu tuyển dụng (JD) tại đây..."></textarea>
-        </div>
-
-        <!-- Rubric Preset -->
-        <div class="form-group">
-          <label class="form-label" for="rubricSelect">Tiêu chí chấm điểm (Scoring Rubric):</label>
-          <select id="rubricSelect" class="form-select">
-            <option value="auto">Tự động suy luận từ JD (Graph node)</option>
-            <option value="backend_engineer" selected>Backend Engineer (YAML Rubric mẫu)</option>
-          </select>
-        </div>
+        <ul class="doc-status-list">
+          <li class="doc-status-item is-empty" id="statusCv">
+            <span class="doc-status-mark">○</span>
+            <span class="doc-status-label">CV</span>
+            <span class="doc-status-value">Chưa có dữ liệu</span>
+          </li>
+          <li class="doc-status-item is-empty" id="statusJd">
+            <span class="doc-status-mark">○</span>
+            <span class="doc-status-label">JD</span>
+            <span class="doc-status-value">Chưa có dữ liệu</span>
+          </li>
+          <li class="doc-status-item" id="statusRubric">
+            <span class="doc-status-mark">✓</span>
+            <span class="doc-status-label">Rubric</span>
+            <span class="doc-status-value">Backend Engineer</span>
+          </li>
+        </ul>
 
       </div>
 
@@ -114,7 +108,7 @@
           <div style="font-size: 2.5rem; margin-bottom: 0.75rem;">🤖</div>
           <div style="font-size: 1.05rem; font-weight: 600; color: var(--text-primary); margin-bottom: 0.35rem;">Chưa có kết quả sàng lọc</div>
           <div style="font-size: 0.85rem; max-width: 460px; margin: 0 auto; line-height: 1.5; color: var(--text-secondary);">
-            Chọn một <strong>Kịch bản thử nghiệm</strong> ở bảng bên trái hoặc dán nội dung CV & JD, sau đó nhấn <strong>Chạy Screener Agent</strong> để xem đánh giá và chi tiết kỹ thuật.
+            Chọn một <strong>Kịch bản thử nghiệm</strong> ở bảng bên trái, hoặc dùng <strong>Upload CV</strong> và <strong>Upload JD</strong> để nhập tay / tải file lên, sau đó nhấn <strong>Chạy Screener Agent</strong> để xem đánh giá và chi tiết kỹ thuật.
           </div>
         </div>
 
@@ -214,6 +208,143 @@
 
   </main>
 
+  <!-- Modal: CV ứng viên / Resume -->
+  <div id="cvModal" class="modal-overlay" data-doc-modal="cv">
+    <div class="modal-content modal-content--wide">
+      <div class="modal-header">
+        <h3 style="font-size: 1.05rem; font-weight: 700;">📄 CV ứng viên / Resume</h3>
+        <button type="button" class="modal-close" data-modal-cancel>✕</button>
+      </div>
+
+      <div class="tab-nav">
+        <button type="button" class="tab-btn active" data-doc-tab="text">Nhập tay</button>
+        <button type="button" class="tab-btn" data-doc-tab="upload">Nhận diện file (.pdf, .txt, .md)</button>
+      </div>
+
+      <div class="modal-scroll">
+        <div data-doc-pane="text">
+          <textarea id="cvText" class="form-textarea form-textarea--tall" placeholder="Dán nội dung CV ứng viên tại đây..."></textarea>
+        </div>
+
+        <div data-doc-pane="upload" style="display: none;">
+          <div class="dropzone-box dropzone-box--tall" data-dropzone>
+            <div style="font-size: 1.75rem; margin-bottom: 0.4rem;">📄</div>
+            <div style="font-size: 0.88rem; font-weight: 600; color: var(--text-primary);">Nhấp hoặc Kéo &amp; Thả CV vào đây</div>
+            <div style="font-size: 0.76rem; color: var(--text-muted); margin-top: 0.25rem;">Tự động trích xuất văn bản bằng pdfplumber</div>
+            <input type="file" accept=".pdf,.txt,.md" data-file-input style="display: none;">
+          </div>
+          <div class="doc-upload-status" data-upload-status></div>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <span class="doc-char-count" data-char-count>Chưa có nội dung</span>
+        <div class="modal-footer-actions">
+          <button type="button" class="btn-secondary" data-modal-cancel>Hủy</button>
+          <button type="button" class="btn-primary btn-inline" data-modal-confirm>Xong</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Mô tả công việc (Job Description) -->
+  <div id="jdModal" class="modal-overlay" data-doc-modal="jd">
+    <div class="modal-content modal-content--wide">
+      <div class="modal-header">
+        <h3 style="font-size: 1.05rem; font-weight: 700;">📋 Mô tả công việc (Job Description)</h3>
+        <button type="button" class="modal-close" data-modal-cancel>✕</button>
+      </div>
+
+      <div class="tab-nav">
+        <button type="button" class="tab-btn active" data-doc-tab="text">Nhập tay</button>
+        <button type="button" class="tab-btn" data-doc-tab="upload">Nhận diện file (.pdf, .txt, .md)</button>
+      </div>
+
+      <div class="modal-scroll">
+        <div data-doc-pane="text">
+          <textarea id="jdText" class="form-textarea form-textarea--tall" placeholder="Dán yêu cầu tuyển dụng (JD) tại đây..."></textarea>
+        </div>
+
+        <div data-doc-pane="upload" style="display: none;">
+          <div class="dropzone-box dropzone-box--tall" data-dropzone>
+            <div style="font-size: 1.75rem; margin-bottom: 0.4rem;">📋</div>
+            <div style="font-size: 0.88rem; font-weight: 600; color: var(--text-primary);">Nhấp hoặc Kéo &amp; Thả JD vào đây</div>
+            <div style="font-size: 0.76rem; color: var(--text-muted); margin-top: 0.25rem;">Tự động trích xuất văn bản bằng pdfplumber</div>
+            <input type="file" accept=".pdf,.txt,.md" data-file-input style="display: none;">
+          </div>
+          <div class="doc-upload-status" data-upload-status></div>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <span class="doc-char-count" data-char-count>Chưa có nội dung</span>
+        <div class="modal-footer-actions">
+          <button type="button" class="btn-secondary" data-modal-cancel>Hủy</button>
+          <button type="button" class="btn-primary btn-inline" data-modal-confirm>Xong</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Scoring Rubric -->
+  <div id="rubricModal" class="modal-overlay">
+    <div class="modal-content modal-content--wide">
+      <div class="modal-header">
+        <h3 style="font-size: 1.05rem; font-weight: 700;">⚖️ Tiêu chí chấm điểm (Scoring Rubric)</h3>
+        <button type="button" class="modal-close" data-modal-cancel>✕</button>
+      </div>
+
+      <div class="form-group" style="margin-bottom: 0.9rem;">
+        <label class="form-label" for="rubricSelect">Bộ tiêu chí áp dụng:</label>
+        <select id="rubricSelect" class="form-select">
+          <option value="auto">Tự động suy luận từ JD (Graph node)</option>
+          <option value="backend_engineer" selected>Backend Engineer (YAML Rubric mẫu)</option>
+        </select>
+      </div>
+
+      <div class="modal-scroll" id="rubricDetail"></div>
+
+      <div class="modal-footer">
+        <span class="doc-char-count" id="rubricWeightSum"></span>
+        <div class="modal-footer-actions">
+          <button type="button" class="btn-primary btn-inline" data-modal-confirm>Xong</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: per-node walkthrough carousel -->
+  <div id="walkthroughModal" class="modal-overlay">
+    <div class="modal-content modal-content--full">
+      <div class="modal-header">
+        <h3 style="font-size: 1.05rem; font-weight: 700;">
+          🔍 Chi tiết kỹ thuật — <span id="wtNodeName"></span>
+        </h3>
+        <div style="display: flex; align-items: center; gap: 0.5rem;">
+          <button type="button" class="btn-secondary" id="btnWtPrev" aria-label="Node trước">‹</button>
+          <span id="wtPosition" class="doc-char-count"></span>
+          <button type="button" class="btn-secondary" id="btnWtNext" aria-label="Node sau">›</button>
+          <button type="button" class="modal-close" data-modal-cancel>✕</button>
+        </div>
+      </div>
+
+      <div id="wtSummary" class="wt-summary"></div>
+
+      <div class="wt-body">
+        <svg id="wtConnector" class="wt-connector" aria-hidden="true"></svg>
+        <div id="wtDocs" class="wt-docs"></div>
+        <div id="wtOutputs" class="wt-outputs"></div>
+      </div>
+
+      <div class="modal-footer">
+        <span id="wtCaption" class="doc-char-count"></span>
+        <div class="modal-footer-actions">
+          <button type="button" class="btn-primary btn-inline" data-modal-confirm>Đóng</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Modal Settings & Ablations -->
   <div id="settingsModal" class="modal-overlay">
     <div class="modal-content">
@@ -267,6 +398,6 @@
     </div>
   </div>
 
-  <script src="/static/js/app.js?v=20260917_04"></script>
+  <script src="/static/js/app.js?v=20260918_02"></script>
 </body>
 </html>

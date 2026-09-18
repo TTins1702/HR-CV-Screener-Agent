@@ -293,18 +293,15 @@ body {
   color: #1E293B;
 }
 
-#cvText {
-  min-height: 250px;
+#cvText, #jdText {
   font-family: 'Consolas', 'Fira Code', 'Monaco', 'Courier New', monospace;
   font-size: 0.85rem;
   line-height: 1.55;
 }
 
-#jdText {
-  min-height: 140px;
-  font-family: 'Consolas', 'Fira Code', 'Monaco', 'Courier New', monospace;
-  font-size: 0.85rem;
-  line-height: 1.55;
+.form-textarea--tall {
+  min-height: 52vh;
+  resize: none;
 }
 
 .scenario-info-box {
@@ -336,6 +333,105 @@ body {
 .dropzone-box.drag-over {
   border-color: var(--accent-primary);
   background-color: var(--accent-subtle);
+}
+
+/* Matches `.form-textarea--tall`, so switching between the two tabs of a document
+   modal does not resize the modal around the reader. */
+.dropzone-box--tall {
+  min-height: 52vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+
+.doc-upload-status {
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+  margin-top: 0.5rem;
+  min-height: 1.1rem;
+}
+
+/* Document actions: three buttons that each open a full-size modal editor */
+.doc-action-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.5rem;
+}
+
+.doc-action-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.7rem 0.4rem;
+  font-family: inherit;
+  font-size: 0.78rem;
+  font-weight: 600;
+  line-height: 1.25;
+  text-align: center;
+  color: var(--text-secondary);
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.doc-action-btn:hover {
+  color: var(--accent-primary);
+  border-color: var(--accent-primary);
+  background-color: var(--accent-subtle);
+}
+
+.doc-action-icon {
+  font-size: 1.15rem;
+}
+
+.doc-status-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  padding: 0.7rem 0.85rem;
+  background-color: var(--bg-subtle);
+  border-radius: var(--radius-sm);
+}
+
+.doc-status-item {
+  display: flex;
+  align-items: baseline;
+  gap: 0.45rem;
+  font-size: 0.79rem;
+  color: var(--text-secondary);
+}
+
+.doc-status-mark {
+  color: #059669;
+  font-weight: 700;
+}
+
+.doc-status-item.is-empty .doc-status-mark {
+  color: var(--text-muted);
+  font-weight: 400;
+}
+
+.doc-status-label {
+  font-weight: 600;
+  color: var(--text-primary);
+  min-width: 3.2rem;
+}
+
+.doc-status-item.is-empty .doc-status-label,
+.doc-status-item.is-empty .doc-status-value {
+  color: var(--text-muted);
+}
+
+.doc-status-value {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .tab-nav {
@@ -771,10 +867,360 @@ mark.injection-highlight {
   border-bottom: 1px solid var(--border-subtle);
 }
 
+/* The document and rubric modals hold a full-size editor, so they need more room
+   than the 480px settings drawer and a body that scrolls on short viewports. */
+.modal-content--wide {
+  max-width: 880px;
+  max-height: 88vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.modal-scroll {
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0;
+}
+
+.modal-close {
+  background: none;
+  border: none;
+  font-size: 1.2rem;
+  line-height: 1;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.modal-close:hover {
+  color: var(--text-primary);
+}
+
+.modal-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-top: 1rem;
+  padding-top: 0.85rem;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.modal-footer-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.btn-inline {
+  width: auto;
+  padding: 0.45rem 1.25rem;
+}
+
+.doc-char-count {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+/* Rubric detail table */
+.rubric-thresholds {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 0.85rem;
+}
+
+.rubric-threshold {
+  flex: 1;
+  padding: 0.5rem 0.7rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.78rem;
+  line-height: 1.35;
+}
+
+.rubric-threshold.good {
+  background-color: var(--good-bg);
+  border: 1px solid var(--good-border);
+  color: var(--good-text);
+}
+
+.rubric-threshold.potential {
+  background-color: var(--potential-bg);
+  border: 1px solid var(--potential-border);
+  color: var(--potential-text);
+}
+
+.rubric-threshold strong {
+  display: block;
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+
+.rubric-criterion {
+  padding: 0.6rem 0;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.rubric-criterion:last-child {
+  border-bottom: none;
+}
+
+.rubric-crit-head {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.3rem;
+}
+
+.rubric-crit-id {
+  font-family: 'JetBrains Mono', 'Consolas', monospace;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.rubric-must {
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  padding: 0.1rem 0.35rem;
+  border-radius: 3px;
+  background-color: var(--nofit-bg);
+  border: 1px solid var(--nofit-border);
+  color: var(--nofit-text);
+}
+
+.rubric-crit-weight {
+  margin-left: auto;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.rubric-weight-bar {
+  height: 5px;
+  background-color: var(--bg-muted);
+  border-radius: 3px;
+  overflow: hidden;
+  margin-bottom: 0.3rem;
+}
+
+.rubric-weight-fill {
+  height: 100%;
+  background-color: var(--accent-primary);
+  border-radius: 3px;
+}
+
+.rubric-crit-desc {
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+  line-height: 1.4;
+}
+
+.rubric-note {
+  padding: 0.85rem;
+  background-color: var(--accent-subtle);
+  border: 1px solid var(--accent-border);
+  border-radius: var(--radius-sm);
+  font-size: 0.8rem;
+  color: #3730A3;
+  line-height: 1.5;
+}
+
+.rubric-note.error {
+  background-color: var(--nofit-bg);
+  border-color: var(--nofit-border);
+  color: var(--nofit-text);
+}
+
 .toggle-item {
   display: flex;
   justify-content: space-between;
   align-items: center;
   padding: 0.5rem 0;
   border-bottom: 1px solid #F1F5F9;
+}
+
+/* ==========================================================================
+   Node walkthrough carousel
+   ========================================================================== */
+.modal-content--full {
+  max-width: 1180px;
+  max-height: 92vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.wt-summary {
+  font-size: 0.84rem;
+  line-height: 1.5;
+  color: var(--text-secondary);
+  padding: 0.6rem 0.8rem;
+  background-color: var(--accent-subtle);
+  border: 1px solid var(--accent-border);
+  border-radius: var(--radius-sm);
+  margin-bottom: 0.8rem;
+}
+
+/* `position: relative` anchors the connector overlay to this box, so the line is
+   drawn in the same coordinate space as the two ends it joins. */
+.wt-body {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+.wt-connector {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 3;
+  overflow: visible;
+}
+
+.wt-connector path {
+  fill: none;
+  stroke: var(--accent-primary);
+  stroke-width: 1.5;
+  stroke-dasharray: 4 3;
+}
+
+.wt-docs, .wt-outputs {
+  overflow-y: auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.wt-doc-card {
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+
+.wt-doc-head {
+  padding: 0.4rem 0.7rem;
+  background-color: var(--bg-subtle);
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.wt-doc-text {
+  padding: 0.7rem;
+  font-family: 'Consolas', 'Fira Code', 'Monaco', 'Courier New', monospace;
+  font-size: 0.78rem;
+  line-height: 1.7;
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: var(--text-primary);
+}
+
+.wt-mark {
+  border: 1.5px solid var(--accent-primary);
+  border-radius: 6px;
+  background-color: var(--accent-subtle);
+  padding: 0 2px;
+  cursor: pointer;
+}
+
+.wt-mark.is-linked {
+  background-color: #FDE68A;
+  border-color: #B45309;
+}
+
+.wt-mark-badge, .wt-row-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 15px;
+  height: 15px;
+  margin: 0 3px;
+  border-radius: 50%;
+  background-color: var(--accent-primary);
+  color: #FFFFFF;
+  font-family: 'Inter', sans-serif;
+  font-size: 0.6rem;
+  font-weight: 700;
+  vertical-align: middle;
+}
+
+.wt-output-row {
+  padding: 0.5rem 0.7rem;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.wt-output-row.is-linked {
+  border-color: #B45309;
+  background-color: #FFFBEB;
+}
+
+.wt-row-head {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.8rem;
+}
+
+.wt-row-field {
+  font-family: 'JetBrains Mono', 'Consolas', monospace;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.wt-row-value {
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-left: auto;
+  text-align: right;
+}
+
+.wt-detail {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  line-height: 1.4;
+  margin-top: 0.25rem;
+}
+
+.wt-note {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--nofit-text);
+  margin-top: 0.25rem;
+}
+
+.wt-locator-chip {
+  display: inline-block;
+  font-family: 'JetBrains Mono', 'Consolas', monospace;
+  font-size: 0.65rem;
+  padding: 0.1rem 0.35rem;
+  border-radius: 3px;
+  background-color: var(--bg-subtle);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-muted);
+}
+
+.step-detail-btn {
+  margin-top: 0.5rem;
+  width: 100%;
+  padding: 0.35rem;
+  font-family: inherit;
+  font-size: 0.74rem;
+  font-weight: 600;
+  color: var(--accent-primary);
+  background-color: var(--bg-surface);
+  border: 1px solid var(--accent-border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.step-detail-btn:hover {
+  background-color: var(--accent-subtle);
 }
