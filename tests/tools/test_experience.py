@@ -2,6 +2,7 @@ from datetime import date
 
 import pytest
 
+from src.contracts.screening import WorkPeriod
 from src.contracts.tools import ExperienceReport
 from src.tools.experience import calculate_experience, merge_spans, months_between
 
@@ -158,3 +159,124 @@ def test_ranges_are_returned_in_text_order():
     assert [r.source.start for r in report.ranges] == sorted(
         r.source.start for r in report.ranges
     )
+
+
+# ---------------------------------------------------------------------------
+# Classifying a range as employment, using the work periods the extractor found.
+# ---------------------------------------------------------------------------
+
+CV_WITH_DEGREE = (
+    "Education BSc Computer Science 2012 - 2016 "
+    "Experience Backend Engineer 01/2018 - 12/2022"
+)
+# Both ranges, unfiltered: Jan 2012-Dec 2016 and Jan 2018-Dec 2022, 59 months each.
+UNFILTERED_TOTAL = 9.83
+JOB_ONLY_TOTAL = 4.92
+
+
+def _job(start: date | None, end: date | None = None) -> WorkPeriod:
+    return WorkPeriod(title="Backend Engineer", company="Acme", start=start, end=end)
+
+
+def test_degree_range_is_not_counted_as_experience():
+    report = calculate_experience(
+        CV_WITH_DEGREE,
+        today=TODAY,
+        work_periods=[_job(date(2018, 1, 1), date(2022, 12, 1))],
+    )
+    assert report.total_years == JOB_ONLY_TOTAL
+
+
+def test_the_uncounted_degree_range_is_still_reported():
+    """Dropping it from the total must not drop it from the audit trail."""
+    report = calculate_experience(
+        CV_WITH_DEGREE,
+        today=TODAY,
+        work_periods=[_job(date(2018, 1, 1), date(2022, 12, 1))],
+    )
+    excluded = [item for item in report.ranges if not item.is_employment]
+    assert len(excluded) == 1
+    assert "2012" in excluded[0].source.quote
+    assert report.excluded_years == JOB_ONLY_TOTAL
+
+
+def test_every_range_counts_when_no_work_periods_are_supplied():
+    report = calculate_experience(CV_WITH_DEGREE, today=TODAY)
+    assert report.total_years == UNFILTERED_TOTAL
+    assert report.excluded_years == 0.0
+    assert all(item.is_employment for item in report.ranges)
+
+
+def test_every_range_counts_when_no_work_period_carries_a_date():
+    """An extractor that found roles but no dates cannot classify anything."""
+    report = calculate_experience(
+        CV_WITH_DEGREE, today=TODAY, work_periods=[_job(None, None)]
+    )
+    assert report.total_years == UNFILTERED_TOTAL
+
+
+def test_a_current_role_matches_an_open_ended_range():
+    report = calculate_experience(
+        "Experience Engineer 03/2020 - Present",
+        today=TODAY,
+        work_periods=[_job(date(2020, 3, 1), None)],
+    )
+    assert report.total_years > 6.0
+    assert all(item.is_employment for item in report.ranges)
+
+
+def test_matching_tolerates_a_bare_year_against_a_dated_role():
+    """The text says "2018"; the extractor read the same role as starting in March."""
+    report = calculate_experience(
+        "Experience Engineer 2018 - 2022",
+        today=TODAY,
+        work_periods=[_job(date(2018, 3, 1), date(2022, 6, 1))],
+    )
+    assert report.total_years > 0.0
+
+
+# ---------------------------------------------------------------------------
+# Two things that are dated but are not experience: a span that has not finished,
+# and any span at all on a CV whose extraction found no roles.
+# ---------------------------------------------------------------------------
+
+EXPECTED_GRADUATION_CV = (
+    "HOC VAN Truong Dai hoc Cong nghe | Cu nhan Tri tue Nhan tao 2024 - 2028 (Du kien) "
+    "GPA: 3.4/4.0. DU AN TIEU BIEU RAGent - Vai tro: Lead Fullstack Developer."
+)
+
+
+def test_a_span_that_has_not_finished_is_not_experience_yet():
+    """"2024 - 2028" on a second-year student is a plan, not four years of work."""
+    report = calculate_experience(EXPECTED_GRADUATION_CV, today=TODAY)
+
+    assert report.total_years == 0.0
+    assert report.excluded_years == 4.92
+
+
+def test_a_future_span_stays_excluded_even_when_a_role_overlaps_it():
+    """A role the model dated into the future cannot rescue it either."""
+    report = calculate_experience(
+        EXPECTED_GRADUATION_CV,
+        today=TODAY,
+        work_periods=[_job(date(2024, 1, 1), date(2028, 12, 1))],
+    )
+
+    assert report.total_years == 0.0
+
+
+def test_a_current_role_is_not_treated_as_a_future_span():
+    """`Present` resolves to today, which has finished; a future year has not."""
+    report = calculate_experience(
+        "Experience Engineer 03/2020 - Present", today=TODAY
+    )
+
+    assert report.total_years > 6.0
+
+
+def test_an_extraction_that_found_no_roles_credits_no_experience():
+    """An empty list is the model saying it read the CV and saw no jobs."""
+    report = calculate_experience(CV_WITH_DEGREE, today=TODAY, work_periods=[])
+
+    assert report.total_years == 0.0
+    assert report.excluded_years == UNFILTERED_TOTAL

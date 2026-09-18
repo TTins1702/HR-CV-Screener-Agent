@@ -21,6 +21,9 @@ class DateRange(BaseModel):
     start: date
     end: date
     is_current: bool = False
+    #: False when work periods were supplied and none of them covers this range,
+    #: i.e. the dates are dated activity the CV does not present as a job.
+    is_employment: bool = True
     source: Evidence
 
     @model_validator(mode="after")
@@ -36,9 +39,14 @@ class ExperienceReport(BaseModel):
     `total_years` is the union of the merged intervals, so overlapping roles are
     counted once. `self_declared_years` is the largest "N years" claim the CV
     makes about itself; it is reported for comparison, never used as the total.
+
+    `excluded_years` is the union of the ranges no work period corroborated --
+    education, projects, certifications. It is reported rather than discarded so a
+    run can say how much of the CV's dated activity it declined to count.
     """
 
     total_years: float = Field(ge=0.0)
+    excluded_years: float = Field(default=0.0, ge=0.0)
     ranges: list[DateRange] = Field(default_factory=list)
     overlaps_merged: int = Field(default=0, ge=0)
     self_declared_years: float | None = Field(default=None, ge=0.0)

@@ -10,19 +10,27 @@ Parsing runs on the normalized copy of the CV (see `text_norm`) because the
 dataset glues dates to their surroundings: `"12/2011toPresentData Analyst"`.
 Offsets are mapped back so every range carries verbatim evidence.
 
-Known limitation, accepted on purpose: the regexes cannot tell an employment
-range from an education range, so `total_years` measures total dated activity,
-not strictly professional experience. `self_declared_years` is reported
-alongside it so the scoring node can see both. Never treat the self-declared
-number as the total -- it is the candidate's own claim.
+The regexes cannot tell an employment range from an education range on their
+own, and on this dataset that is not a small effect: a degree runs before the
+career rather than alongside it, so `merge_spans` unions the two and the degree
+adds its whole length to the total. Pass `work_periods` -- the roles the extract
+node already lifted out of the CV -- and a range counts only where one of them
+corroborates it. That splits the work along the line each side is good at: the
+model says which spans are jobs, the tool does the arithmetic. Leave the argument
+out and the total is every dated range, as before.
+
+`self_declared_years` is reported alongside the total so the scoring node can see
+both. Never treat the self-declared number as the total -- it is the candidate's
+own claim.
 """
 
 from __future__ import annotations
 
 import re
+from collections.abc import Sequence
 from datetime import date
 
-from src.contracts.screening import Evidence
+from src.contracts.screening import Evidence, WorkPeriod
 from src.contracts.tools import DateRange, ExperienceReport
 from src.tools.text_norm import normalize_with_map
 
@@ -41,6 +49,11 @@ EARLIEST_PLAUSIBLE_YEAR = 1960
 MAX_RANGE_YEARS = 45.0
 #: Above this, a self-declared "N years" claim is noise, not a claim.
 MAX_SELF_DECLARED_YEARS = 50
+#: How far a range's start may sit from a role's start and still be that role. A
+#: bare "2018" in the text reads as January while the extractor may have taken the
+#: month off the same line, so the two can differ by most of a year while naming
+#: the same job.
+MATCH_TOLERANCE_MONTHS = 12
 
 _MONTH = r"(?:jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)[a-z]*\.?"
 _CURRENT = r"(?:present|current|now|ongoing|to\s*date|till\s*date)"
@@ -71,20 +84,36 @@ def merge_spans(spans: list[tuple[date, date]]) -> list[tuple[date, date]]:
     return merged
 
 
-def calculate_experience(text: str, *, today: date | None = None) -> ExperienceReport:
+def calculate_experience(
+    text: str,
+    *,
+    today: date | None = None,
+    work_periods: Sequence[WorkPeriod] | None = None,
+) -> ExperienceReport:
     """Total dated experience in `text`, with overlaps merged and evidence attached.
 
     Pass `today` explicitly wherever the result is compared or stored -- an
     open-ended range is measured up to it, so leaving it to `date.today()` makes
     the output drift from one day to the next.
+
+    Pass `work_periods` to count only the ranges one of those roles covers; see
+    the module docstring. Omitting them counts every dated range.
     """
     reference_date = today or date.today()
     normalized, index_map = normalize_with_map(text)
 
     ranges = _find_ranges(text, normalized, index_map, reference_date)
-    spans = [(item.start, item.end) for item in ranges]
+    ranges = _mark_employment(ranges, work_periods, reference_date)
+
+    spans = [(item.start, item.end) for item in ranges if item.is_employment]
     merged = merge_spans(spans)
     total_months = sum(months_between(start, end) for start, end in merged)
+    excluded_months = sum(
+        months_between(start, end)
+        for start, end in merge_spans(
+            [(item.start, item.end) for item in ranges if not item.is_employment]
+        )
+    )
 
     self_declared_evidence = _find_self_declared(text, normalized, index_map)
     claimed = [
@@ -95,11 +124,55 @@ def calculate_experience(text: str, *, today: date | None = None) -> ExperienceR
 
     return ExperienceReport(
         total_years=round(total_months / 12.0, 2),
+        excluded_years=round(excluded_months / 12.0, 2),
         ranges=ranges,
         overlaps_merged=len(spans) - len(merged),
         self_declared_years=max(claimed) if claimed else None,
         self_declared_evidence=self_declared_evidence,
     )
+
+
+def _mark_employment(
+    ranges: list[DateRange], work_periods: Sequence[WorkPeriod] | None, today: date
+) -> list[DateRange]:
+    """Flag the ranges that are worked employment, leaving the rest reported uncounted.
+
+    Two ways a range fails. It may not have happened yet: "2024 - 2028" on a second
+    year student is an expected graduation, and counting it credits four years to
+    somebody who has worked none of them. A current role is written `Present`, which
+    resolves to today, so this never touches one.
+
+    Or no extracted role covers it. The three cases are deliberately distinct:
+    `None` means no roles were offered and nothing is classified; an empty list
+    means the model read the CV and found no jobs, which is an answer; and roles
+    that carry no dates classify nothing, because an extractor that missed the dates
+    is not evidence that the candidate never worked.
+    """
+    if work_periods is None:
+        roles: list[tuple[date, date]] | None = None
+    elif not work_periods:
+        roles = []
+    else:
+        dated = [
+            (period.start, period.end or today)
+            for period in work_periods
+            if period.start is not None
+        ]
+        roles = dated or None
+
+    marked: list[DateRange] = []
+    for item in ranges:
+        employment = item.end <= today
+        if employment and roles is not None:
+            employment = any(
+                start <= item.end
+                and item.start <= end
+                and months_between(min(start, item.start), max(start, item.start))
+                <= MATCH_TOLERANCE_MONTHS
+                for start, end in roles
+            )
+        marked.append(item.model_copy(update={"is_employment": employment}))
+    return marked
 
 
 def _find_ranges(

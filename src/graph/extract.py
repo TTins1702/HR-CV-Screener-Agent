@@ -171,26 +171,34 @@ def build_profile(
     Returns the profile and the size of the correction, or None when there is
     nothing to compare against.
     """
-    report = calculate_experience(state.cv_text, today=today)
+    # Parsed before the tool runs, because the tool uses them to tell an employment
+    # range from a degree: the model classifies, `calculate_experience` counts.
+    periods = [
+        WorkPeriod(
+            title=period.title,
+            company=period.company,
+            start=parse_month(period.start),
+            end=parse_month(period.end),
+        )
+        for period in extraction.work_periods
+    ]
+    report = calculate_experience(state.cv_text, today=today, work_periods=periods)
     declared = extraction.total_experience_years
-    corrected = report.total_years if report.ranges else declared
+    # Counted ranges, not any range: roles that line up with nothing in the text
+    # leave a total of zero, which would read as "never worked" rather than as the
+    # extraction failure it is.
+    counted = [item for item in report.ranges if item.is_employment]
+    corrected = report.total_years if counted else declared
     delta = None if declared is None or corrected is None else abs(corrected - declared)
 
     profile = CandidateProfile(
         raw_text=state.cv_text,
         skills=extraction.skills,
-        work_periods=[
-            WorkPeriod(
-                title=period.title,
-                company=period.company,
-                start=parse_month(period.start),
-                end=parse_month(period.end),
-            )
-            for period in extraction.work_periods
-        ],
+        work_periods=periods,
         degrees=extraction.degrees,
         certifications=extraction.certifications,
         total_experience_years=corrected,
+        excluded_years=report.excluded_years,
         llm_declared_years=declared,
         extraction_confidence=min(max(extraction.extraction_confidence, 0.0), 1.0),
         missing_fields=unusable_date_fields(extraction),

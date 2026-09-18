@@ -234,3 +234,57 @@ def test_a_confidence_the_model_invents_is_still_clamped_to_the_contract():
     )
 
     assert profile.extraction_confidence == 1.0
+
+
+# A CV whose degree is written as a range, which is where the regexes alone
+# over-count: the degree runs before the career rather than alongside it, so the
+# union of the two is longer than the career by the whole length of the degree.
+DEGREE_AND_JOB_CV = (
+    "Education B.S. Computer Science, State University, 2012 - 2016. "
+    "Experience Backend Engineer at Acme Corp, 06/2019to12/2022. Built payment APIs."
+)
+
+
+def test_a_degree_range_is_not_counted_as_professional_experience():
+    degree_state = ScreeningState(cv_text=DEGREE_AND_JOB_CV, jd_text="jd")
+
+    profile, _ = build_profile(degree_state, extraction(), today=TODAY)
+
+    assert profile.total_experience_years == 3.5  # the Acme role, not the degree
+
+
+def test_the_uncounted_degree_years_are_still_available_to_report():
+    degree_state = ScreeningState(cv_text=DEGREE_AND_JOB_CV, jd_text="jd")
+
+    profile, _ = build_profile(degree_state, extraction(), today=TODAY)
+
+    assert profile.excluded_years == 4.92  # 2012-01 to 2016-12
+
+
+def test_the_tool_still_counts_everything_when_the_model_found_no_dated_roles():
+    """No dated role means nothing to classify against, not a zero-experience CV."""
+    degree_state = ScreeningState(cv_text=DEGREE_AND_JOB_CV, jd_text="jd")
+    undated = extraction(
+        work_periods=[RawPeriod(title="Backend Engineer", company="Acme", start=None, end=None)]
+    )
+
+    profile, _ = build_profile(degree_state, undated, today=TODAY)
+
+    assert profile.total_experience_years == 8.42  # degree union role
+
+
+def test_the_model_is_kept_when_its_roles_match_nothing_in_the_text():
+    """Roles that line up with no range in the CV must not zero the total.
+
+    Excluding every range would otherwise read as "this candidate has never
+    worked", which is a extraction failure reported as a fact about the person.
+    """
+    degree_state = ScreeningState(cv_text=DEGREE_AND_JOB_CV, jd_text="jd")
+    elsewhere = extraction(
+        total_experience_years=4.0,
+        work_periods=[RawPeriod(title="Analyst", company="Old Co", start="1995-01", end="1998-01")],
+    )
+
+    profile, _ = build_profile(degree_state, elsewhere, today=TODAY)
+
+    assert profile.total_experience_years == 4.0

@@ -62,6 +62,9 @@ class CandidateProfile(BaseModel):
     degrees: list[str] = Field(default_factory=list)
     certifications: list[str] = Field(default_factory=list)
     total_experience_years: float | None = Field(default=None, ge=0.0)
+    #: Dated activity no extracted role covered -- degrees, projects, certifications.
+    #: Reported, never scored: it is the part of the CV the total declines to count.
+    excluded_years: float = Field(default=0.0, ge=0.0)
     llm_declared_years: float | None = Field(default=None, ge=0.0)
     extraction_confidence: float = Field(ge=0.0, le=1.0)
     missing_fields: list[str] = Field(default_factory=list)
