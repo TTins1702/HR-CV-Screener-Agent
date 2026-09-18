@@ -785,6 +785,7 @@ function renderWalkthroughSlide(index) {
   document.getElementById("wtCaption").textContent = slide.caption;
 
   const docs = document.getElementById("wtDocs");
+  docs.classList.toggle("wt-docs--pair", slide.documents.length > 1);
   docs.innerHTML = slide.documents
     .map((doc) =>
       renderWalkthroughDoc(slide, doc, doc === "cv" ? currentCvText : jdTextEl.value.trim())
@@ -864,8 +865,13 @@ function drawWalkthroughConnector(markIds, row) {
     if (!rowBox) continue;
 
     const markBox = mark.getBoundingClientRect();
-    // A mark scrolled out of its own column would otherwise get a line pointing
-    // off into the page, which reads as an arrow to the wrong text.
+    // A mark scrolled out of view would otherwise get a line pointing off into
+    // the page, which reads as an arrow to the wrong text. Measure against the
+    // mark's own scroller when it has one -- with CV and JD side by side each
+    // card scrolls separately, and the column's bounds no longer tell us.
+    const scroller = mark.closest(".wt-doc-text") || document.getElementById("wtDocs");
+    const bounds = scroller.getBoundingClientRect();
+    if (markBox.bottom < bounds.top || markBox.top > bounds.bottom) continue;
     if (markBox.bottom < docsBox.top || markBox.top > docsBox.bottom) continue;
 
     const x1 = markBox.right - frame.left;
@@ -931,8 +937,9 @@ function initWalkthrough() {
 
   modal.addEventListener("mouseleave", clearWalkthroughConnector);
   // The line is drawn from live positions, so it has to go when they change.
-  document.getElementById("wtDocs").addEventListener("scroll", clearWalkthroughConnector);
-  document.getElementById("wtOutputs").addEventListener("scroll", clearWalkthroughConnector);
+  // Captured, because `scroll` does not bubble and the card scrollers are rebuilt
+  // on every slide change.
+  modal.addEventListener("scroll", clearWalkthroughConnector, true);
 }
 
 // ============================================================================

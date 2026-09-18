@@ -1044,7 +1044,11 @@ mark.injection-highlight {
    ========================================================================== */
 .modal-content--full {
   max-width: 1180px;
-  max-height: 92vh;
+  /* A fixed height, not just a cap: the paired CV/JD cards flex to fill their
+     column, and against `max-height` alone they collapse to nothing and take the
+     modal down with them. It also keeps the frame steady while paging through
+     slides of very different lengths. */
+  height: 92vh;
   display: flex;
   flex-direction: column;
 }
@@ -1108,6 +1112,25 @@ mark.injection-highlight {
      `overflow: hidden` silently swallows the rest of the CV. Let it keep its full
      height and let the column scroll instead. */
   flex-shrink: 0;
+}
+
+/* A slide showing CV and JD together has to show them together: stacked at full
+   height the JD lands a screen below the fold, and a mark on it is invisible. The
+   pair splits the column and each card scrolls inside itself. */
+.wt-docs--pair {
+  overflow-y: hidden;
+}
+
+.wt-docs--pair .wt-doc-card {
+  flex: 1 1 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.wt-docs--pair .wt-doc-text {
+  overflow-y: auto;
+  min-height: 0;
 }
 
 .wt-doc-head {

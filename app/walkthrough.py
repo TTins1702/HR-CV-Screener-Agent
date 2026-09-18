@@ -20,7 +20,7 @@ from src.contracts.state import ScreeningState
 from src.graph.rubric_nodes import blocking_must_haves, required_years
 from src.tools.evidence import search_evidence
 from src.tools.experience import calculate_experience
-from src.contracts.tools import InjectionSeverity
+from src.contracts.tools import InjectionSeverity, Scorecard
 from src.tools.injection import scan_injection
 from src.tools.skills import expand_skill
 
@@ -345,7 +345,13 @@ def _rubric_of(builder: _Builder) -> JDRubric | None:
 
 
 def _mark_terms_in_jd(builder: _Builder, criterion: Criterion) -> list[int]:
-    """Mark the criterion's skill terms where the JD actually names them."""
+    """Mark where the JD asks for this criterion.
+
+    Skill terms first, because those are the exact strings the gate searches for.
+    The bundled preset rubric names none at all, though -- its criteria carry only
+    a description -- so the description is the fallback: it is still the wording
+    this criterion was derived from, and `search_evidence` places it in the JD.
+    """
     mark_ids = []
     for term in criterion.skill_terms:
         for surface in expand_skill(term):
@@ -353,7 +359,23 @@ def _mark_terms_in_jd(builder: _Builder, criterion: Criterion) -> list[int]:
             if mark_id:
                 mark_ids.append(mark_id)
                 break
-    return mark_ids
+    if mark_ids:
+        return mark_ids
+
+    described = _locate(builder, "jd", criterion.description, criterion.id)
+    return [described] if described else []
+
+
+def _approximate_note(builder: _Builder, mark_ids: list[int]) -> str | None:
+    """Say so when a mark was placed by similarity rather than an exact match.
+
+    A paraphrase located at 0.86 looks identical on screen to a verbatim quote.
+    The difference has to be written down, or the slide overstates its evidence.
+    """
+    scores = [m.score for m in builder.marks if m.id in mark_ids and m.score < 1.0]
+    if not scores:
+        return None
+    return f"khớp gần đúng với JD ở mức {min(scores):.2f}, không phải trùng khít"
 
 
 def _load_rubric(builder: _Builder) -> tuple[list[str], list[OutputRow]]:
@@ -377,12 +399,18 @@ def _load_rubric(builder: _Builder) -> tuple[list[str], list[OutputRow]]:
     ]
     for criterion in rubric.criteria:
         badge = " · MUST-HAVE" if criterion.must_have else ""
+        mark_ids = _mark_terms_in_jd(builder, criterion)
+        approximate = _approximate_note(builder, mark_ids)
         outputs.append(
             OutputRow(
                 field=criterion.id,
                 value=f"{round(criterion.weight * 100)}%{badge}",
-                mark_ids=_mark_terms_in_jd(builder, criterion),
-                detail=criterion.description,
+                mark_ids=mark_ids,
+                detail=(
+                    f"{criterion.description} — {approximate}"
+                    if approximate
+                    else criterion.description
+                ),
             )
         )
     outputs.append(
@@ -434,7 +462,12 @@ def _must_have_check(builder: _Builder) -> tuple[list[str], list[OutputRow]]:
         mark_ids = _mark_terms_in_jd(builder, criterion)
         failed = criterion.id in blocking
 
+        # The gate judges exactly two shapes of criterion: a skill that names its
+        # terms, and a year count that names a number. Everything else it leaves
+        # to `score_criteria`. Treating "not blocked" as "passed" would credit the
+        # gate with a verdict it never reached.
         if criterion.kind == "skill" and criterion.skill_terms:
+            judged = True
             for term in criterion.skill_terms:
                 for surface in expand_skill(term):
                     found = _locate(builder, "cv", surface, criterion.id)
@@ -444,24 +477,53 @@ def _must_have_check(builder: _Builder) -> tuple[list[str], list[OutputRow]]:
             detail = "cần một trong: " + ", ".join(criterion.skill_terms)
         elif criterion.kind == "experience_years":
             required = required_years(criterion.description)
+            judged = required is not None
             have = max(
                 profile.total_experience_years or 0.0, profile.llm_declared_years or 0.0
             )
-            detail = (
-                f"cần {required:.1f} năm, hồ sơ có {have:.2f} năm"
-                if required is not None
-                else "mô tả không nêu số năm cụ thể, cổng bỏ qua"
-            )
+            if judged:
+                detail = f"cần {required:.1f} năm, hồ sơ có {have:.2f} năm"
+                # Show the dated ranges the number was measured from, so the
+                # comparison is not just two figures with nothing behind them.
+                report = calculate_experience(
+                    builder.cv_text,
+                    today=date.today(),
+                    work_periods=profile.work_periods,
+                )
+                for item in report.ranges:
+                    if not item.is_employment:
+                        continue
+                    found = builder.add_mark(
+                        "cv",
+                        item.source.start,
+                        item.source.end,
+                        criterion.id,
+                        "calculate_experience",
+                        item.source.score,
+                    )
+                    if found:
+                        mark_ids.append(found)
+            else:
+                detail = "mô tả không nêu số năm cụ thể, nên cổng để score_criteria chấm"
         else:
-            detail = "cổng không phán được loại tiêu chí này, để score_criteria chấm"
+            judged = False
+            detail = "cổng chỉ phán được kỹ năng có nêu từ khóa và số năm, nên tiêu chí này để score_criteria chấm"
 
+        if failed:
+            value, note = "thiếu", "chặn ở cổng must-have"
+        elif judged:
+            value, note = "đạt", None
+        else:
+            value, note = "không phán được", None
+
+        approximate = _approximate_note(builder, mark_ids)
         outputs.append(
             OutputRow(
                 field=criterion.id,
-                value="thiếu" if failed else "đạt",
+                value=value,
                 mark_ids=mark_ids,
-                note="chặn ở cổng must-have" if failed else None,
-                detail=detail,
+                note=note,
+                detail=f"{detail} — {approximate}" if approximate else detail,
             )
         )
 
@@ -683,6 +745,145 @@ def _deep_review(builder: _Builder) -> tuple[list[str], list[OutputRow]]:
     return ["cv"], outputs
 
 
+def _no_document_row(field: str, detail: str) -> list[OutputRow]:
+    return [OutputRow(field=field, value="chưa có", detail=detail)]
+
+
+def _aggregate(builder: _Builder) -> tuple[list[str], list[OutputRow]]:
+    """Weighted sum only -- this node never looks at the CV or the JD."""
+    raw = builder.snapshot.get("scorecard")
+    if not raw:
+        return [], _no_document_row(
+            "scorecard", "Node chưa tổng hợp được điểm trong bước này."
+        )
+
+    scorecard = Scorecard.model_validate(raw)
+    rubric = _rubric_of(builder)
+    weights = {c.id: c.weight for c in rubric.criteria} if rubric else {}
+
+    outputs: list[OutputRow] = []
+    for criterion_id, contribution in scorecard.weighted_contributions.items():
+        weight = weights.get(criterion_id)
+        outputs.append(
+            OutputRow(
+                field=criterion_id,
+                value=f"{contribution:.4f}",
+                detail=(
+                    f"điểm tiêu chí × trọng số {round(weight * 100)}%"
+                    if weight is not None
+                    else "phần đóng góp vào điểm tổng"
+                ),
+            )
+        )
+
+    outputs.append(
+        OutputRow(
+            field="overall_score",
+            value=f"{scorecard.overall_score:.4f}",
+            detail="tổng các phần đóng góp ở trên",
+        )
+    )
+    outputs.append(
+        OutputRow(
+            field="in_gray_zone",
+            value="có" if scorecard.in_gray_zone else "không",
+            detail=(
+                "Điểm nằm sát một trong hai ngưỡng, nên hồ sơ được chấm lại ở deep_review."
+                if scorecard.in_gray_zone
+                else "Điểm nằm cách cả hai ngưỡng, đi thẳng sang decide."
+            ),
+        )
+    )
+    if scorecard.missing_must_haves:
+        outputs.append(
+            OutputRow(
+                field="missing_must_haves",
+                value=", ".join(scorecard.missing_must_haves),
+                note="tính sau khi chấm, khác với cổng must_have_check trước đó",
+            )
+        )
+    if scorecard.unscored_criteria:
+        outputs.append(
+            OutputRow(
+                field="unscored_criteria",
+                value=", ".join(scorecard.unscored_criteria),
+                note="không có điểm, nên không đóng góp vào điểm tổng",
+            )
+        )
+    return [], outputs
+
+
+def _decide(builder: _Builder) -> tuple[list[str], list[OutputRow]]:
+    """Two thresholds and one number: the whole of the labelling rule."""
+    result = builder.snapshot.get("result") or {}
+    raw_scorecard = builder.snapshot.get("scorecard")
+    rubric = _rubric_of(builder)
+
+    score = None
+    if raw_scorecard:
+        score = Scorecard.model_validate(raw_scorecard).overall_score
+    elif "overall_score" in result:
+        score = result["overall_score"]
+
+    if score is None or rubric is None:
+        return [], _no_document_row(
+            "quyết định", "Thiếu điểm tổng hoặc bộ tiêu chí, chưa dựng được đối chiếu."
+        )
+
+    outputs = [
+        OutputRow(
+            field="overall_score",
+            value=f"{score:.4f}",
+            detail="điểm đem ra đối chiếu",
+        ),
+        OutputRow(
+            field="good_fit_threshold",
+            value=f"{rubric.good_fit_threshold:.2f}",
+            detail=("đạt" if score >= rubric.good_fit_threshold else "không đạt"),
+        ),
+        OutputRow(
+            field="potential_fit_threshold",
+            value=f"{rubric.potential_fit_threshold:.2f}",
+            detail=("đạt" if score >= rubric.potential_fit_threshold else "không đạt"),
+        ),
+        OutputRow(
+            field="label",
+            value=result.get("label") or "—",
+            detail="nhãn cuối cùng, suy ra từ hai dòng ngay trên",
+        ),
+    ]
+    return [], outputs
+
+
+def _rank(builder: _Builder) -> tuple[list[str], list[OutputRow]]:
+    """Closing node: the outcome, and the route that produced it."""
+    result = builder.snapshot.get("result") or {}
+    if not result:
+        return [], _no_document_row("kết quả", "Lần chạy chưa chốt được kết quả.")
+
+    outputs = [
+        OutputRow(field="label", value=result.get("label") or "—"),
+        OutputRow(
+            field="overall_score",
+            value=(
+                f"{result['overall_score']:.4f}" if "overall_score" in result else "—"
+            ),
+        ),
+    ]
+    if result.get("rejected_reason"):
+        outputs.append(
+            OutputRow(field="rejected_reason", value=result["rejected_reason"])
+        )
+    outputs.append(
+        OutputRow(
+            field="path_taken",
+            value=" → ".join(result.get("path_taken") or []) or "—",
+            detail="đúng các node lần chạy này đã đi qua, kể cả nhánh rẽ",
+        )
+    )
+    return [], outputs
+
+
 _BUILDERS: dict[str, Callable[[_Builder], tuple[list[str], list[OutputRow]]]] = {
     "ingest": _ingest,
     "guard": _guard,
@@ -694,6 +895,9 @@ _BUILDERS: dict[str, Callable[[_Builder], tuple[list[str], list[OutputRow]]]] = 
     "quarantine": _quarantine,
     "repair": _repair,
     "deep_review": _deep_review,
+    "aggregate": _aggregate,
+    "decide": _decide,
+    "rank": _rank,
 }
 
 
