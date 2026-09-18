@@ -236,3 +236,133 @@ def test_score_criteria_without_scores_explains_itself():
     slide = build_slides(CV, JD, [_snap("score_criteria", criterion_scores=[])])[0]
     assert slide.marks == []
     assert slide.outputs
+
+
+RUBRIC = {
+    "job_title": "Backend Engineer",
+    "good_fit_threshold": 0.70,
+    "potential_fit_threshold": 0.40,
+    "criteria": [
+        {
+            "id": "backend_language",
+            "description": "Production experience with Python or Go",
+            "weight": 0.6,
+            "must_have": True,
+            "kind": "skill",
+            "skill_terms": ["Python", "Go"],
+        },
+        {
+            "id": "years_experience",
+            "description": "At least 3 years of professional software engineering experience",
+            "weight": 0.4,
+            "must_have": True,
+            "kind": "experience_years",
+            "skill_terms": [],
+        },
+    ],
+}
+
+
+def test_load_rubric_reads_the_jd_not_the_cv():
+    slide = build_slides(CV, JD, [_snap("load_rubric", rubric=RUBRIC)])[0]
+    assert slide.documents == ["jd"]
+    for mark in slide.marks:
+        assert mark.doc == "jd"
+        assert JD[mark.start : mark.end].strip()
+
+
+def test_load_rubric_marks_a_skill_term_that_appears_in_the_jd():
+    slide = build_slides(CV, JD, [_snap("load_rubric", rubric=RUBRIC)])[0]
+    row = next(row for row in slide.outputs if row.field == "backend_language")
+    assert row.mark_ids, "Python is named in this JD and must be marked there"
+    mark = next(m for m in slide.marks if m.id == row.mark_ids[0])
+    assert "python" in JD[mark.start : mark.end].lower()
+
+
+def test_load_rubric_shows_weight_and_must_have():
+    slide = build_slides(CV, JD, [_snap("load_rubric", rubric=RUBRIC)])[0]
+    row = next(row for row in slide.outputs if row.field == "backend_language")
+    assert "60%" in row.value
+    assert "MUST" in row.value.upper()
+
+
+def test_load_rubric_reports_the_two_thresholds():
+    slide = build_slides(CV, JD, [_snap("load_rubric", rubric=RUBRIC)])[0]
+    fields = {row.field for row in slide.outputs}
+    assert "good_fit_threshold" in fields
+    assert "potential_fit_threshold" in fields
+
+
+def test_load_rubric_without_a_rubric_explains_itself():
+    slide = build_slides(CV, JD, [_snap("load_rubric", rubric=None)])[0]
+    assert slide.marks == []
+    assert slide.outputs
+
+
+def test_must_have_check_reads_both_documents():
+    snapshot = _snap(
+        "must_have_check", rubric=RUBRIC, profile=PROFILE, blocking_must_haves=[]
+    )
+    slide = build_slides(CV, JD, [snapshot])[0]
+    assert slide.documents == ["cv", "jd"]
+    assert {m.doc for m in slide.marks} == {"cv", "jd"}
+
+
+def test_must_have_check_passes_a_skill_the_candidate_holds():
+    snapshot = _snap(
+        "must_have_check", rubric=RUBRIC, profile=PROFILE, blocking_must_haves=[]
+    )
+    slide = build_slides(CV, JD, [snapshot])[0]
+    row = next(row for row in slide.outputs if row.field == "backend_language")
+    assert row.value == "đạt"
+    assert row.note is None
+
+
+def test_must_have_check_blocks_a_skill_the_candidate_lacks():
+    """The gate's own verdict decides, not a rule restated here."""
+    rubric = {
+        **RUBRIC,
+        "criteria": [
+            {**RUBRIC["criteria"][0], "skill_terms": ["Haskell"]},
+            RUBRIC["criteria"][1],
+        ],
+    }
+    snapshot = _snap(
+        "must_have_check",
+        rubric=rubric,
+        profile=PROFILE,
+        blocking_must_haves=["backend_language"],
+    )
+    slide = build_slides(CV, JD, [snapshot])[0]
+    row = next(row for row in slide.outputs if row.field == "backend_language")
+    assert row.value == "thiếu"
+    assert row.note
+
+
+def test_must_have_check_compares_the_years_it_needs_against_the_years_it_found():
+    snapshot = _snap(
+        "must_have_check", rubric=RUBRIC, profile=PROFILE, blocking_must_haves=[]
+    )
+    slide = build_slides(CV, JD, [snapshot])[0]
+    row = next(row for row in slide.outputs if row.field == "years_experience")
+    assert "3" in (row.detail or ""), "the required year count must be shown"
+
+
+def test_reject_fast_names_what_was_missing():
+    snapshot = _snap(
+        "reject_fast",
+        rubric=RUBRIC,
+        profile=PROFILE,
+        blocking_must_haves=["backend_language"],
+        result={
+            "overall_score": 0.0,
+            "label": "No Fit",
+            "rejected_reason": "missing must-have criteria: backend_language",
+            "path_taken": ["ingest", "guard", "extract", "reject_fast"],
+        },
+    )
+    slide = build_slides(CV, JD, [snapshot])[0]
+    assert slide.documents == ["cv", "jd"]
+    values = " ".join(f"{row.field} {row.value}" for row in slide.outputs)
+    assert "backend_language" in values
+    assert any("rejected_reason" == row.field for row in slide.outputs)

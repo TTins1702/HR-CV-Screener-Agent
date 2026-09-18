@@ -14,7 +14,10 @@ from typing import Any, Callable
 
 from pydantic import BaseModel, Field
 
+from src.contracts.rubric import Criterion, JDRubric
 from src.contracts.screening import CandidateProfile, CriterionScore
+from src.contracts.state import ScreeningState
+from src.graph.rubric_nodes import blocking_must_haves, required_years
 from src.tools.evidence import search_evidence
 from src.tools.experience import calculate_experience
 from src.tools.injection import scan_injection
@@ -326,11 +329,188 @@ def _score_criteria(builder: _Builder) -> tuple[list[str], list[OutputRow]]:
     return ["cv"], outputs
 
 
+def _rubric_of(builder: _Builder) -> JDRubric | None:
+    raw = builder.snapshot.get("rubric")
+    return JDRubric.model_validate(raw) if raw else None
+
+
+def _mark_terms_in_jd(builder: _Builder, criterion: Criterion) -> list[int]:
+    """Mark the criterion's skill terms where the JD actually names them."""
+    mark_ids = []
+    for term in criterion.skill_terms:
+        for surface in expand_skill(term):
+            mark_id = _locate(builder, "jd", surface, criterion.id)
+            if mark_id:
+                mark_ids.append(mark_id)
+                break
+    return mark_ids
+
+
+def _load_rubric(builder: _Builder) -> tuple[list[str], list[OutputRow]]:
+    """The one node whose input is the JD, so the JD is what this slide shows."""
+    rubric = _rubric_of(builder)
+    if rubric is None:
+        return ["jd"], [
+            OutputRow(
+                field="rubric",
+                value="chưa có",
+                detail="Node chưa nạp được bộ tiêu chí trong bước này.",
+            )
+        ]
+
+    outputs = [
+        OutputRow(
+            field="job_title",
+            value=rubric.job_title,
+            detail="tên vị trí mà bộ tiêu chí này chấm",
+        )
+    ]
+    for criterion in rubric.criteria:
+        badge = " · MUST-HAVE" if criterion.must_have else ""
+        outputs.append(
+            OutputRow(
+                field=criterion.id,
+                value=f"{round(criterion.weight * 100)}%{badge}",
+                mark_ids=_mark_terms_in_jd(builder, criterion),
+                detail=criterion.description,
+            )
+        )
+    outputs.append(
+        OutputRow(
+            field="good_fit_threshold",
+            value=f"{rubric.good_fit_threshold:.2f}",
+            detail="điểm tổng từ mức này trở lên là Good Fit",
+        )
+    )
+    outputs.append(
+        OutputRow(
+            field="potential_fit_threshold",
+            value=f"{rubric.potential_fit_threshold:.2f}",
+            detail="dưới mức này là No Fit",
+        )
+    )
+    return ["jd"], outputs
+
+
+def _gate_state(builder: _Builder, rubric: JDRubric, profile: CandidateProfile) -> ScreeningState:
+    """Rebuild just enough state to ask the gate its own question."""
+    return ScreeningState(
+        cv_text=builder.cv_text, jd_text=builder.jd_text, rubric=rubric, profile=profile
+    )
+
+
+def _must_have_check(builder: _Builder) -> tuple[list[str], list[OutputRow]]:
+    """Both documents: the requirement comes from the JD, the answer from the CV.
+
+    The verdict is `blocking_must_haves` itself, not a rule restated here. A gate
+    explained by a second copy of its logic is an explanation of the copy.
+    """
+    rubric = _rubric_of(builder)
+    raw_profile = builder.snapshot.get("profile")
+    if rubric is None or not raw_profile:
+        return ["cv", "jd"], [
+            OutputRow(
+                field="cổng must-have",
+                value="không chạy được",
+                detail="Thiếu bộ tiêu chí hoặc hồ sơ trích xuất, nên cổng bỏ qua.",
+            )
+        ]
+
+    profile = CandidateProfile.model_validate(raw_profile)
+    blocking = set(blocking_must_haves(_gate_state(builder, rubric, profile)))
+
+    outputs: list[OutputRow] = []
+    for criterion in rubric.must_haves():
+        mark_ids = _mark_terms_in_jd(builder, criterion)
+        failed = criterion.id in blocking
+
+        if criterion.kind == "skill" and criterion.skill_terms:
+            for term in criterion.skill_terms:
+                for surface in expand_skill(term):
+                    found = _locate(builder, "cv", surface, criterion.id)
+                    if found:
+                        mark_ids.append(found)
+                        break
+            detail = "cần một trong: " + ", ".join(criterion.skill_terms)
+        elif criterion.kind == "experience_years":
+            required = required_years(criterion.description)
+            have = max(
+                profile.total_experience_years or 0.0, profile.llm_declared_years or 0.0
+            )
+            detail = (
+                f"cần {required:.1f} năm, hồ sơ có {have:.2f} năm"
+                if required is not None
+                else "mô tả không nêu số năm cụ thể, cổng bỏ qua"
+            )
+        else:
+            detail = "cổng không phán được loại tiêu chí này, để score_criteria chấm"
+
+        outputs.append(
+            OutputRow(
+                field=criterion.id,
+                value="thiếu" if failed else "đạt",
+                mark_ids=mark_ids,
+                note="chặn ở cổng must-have" if failed else None,
+                detail=detail,
+            )
+        )
+
+    if not outputs:
+        outputs.append(
+            OutputRow(
+                field="must-have",
+                value="0",
+                detail="Bộ tiêu chí không đánh dấu tiêu chí nào là bắt buộc.",
+            )
+        )
+    return ["cv", "jd"], outputs
+
+
+def _reject_fast(builder: _Builder) -> tuple[list[str], list[OutputRow]]:
+    """Terminal shortcut: no scoring call is made, which is where the saving is."""
+    blocking = builder.snapshot.get("blocking_must_haves") or []
+    rubric = _rubric_of(builder)
+    by_id = {c.id: c for c in rubric.criteria} if rubric else {}
+
+    outputs: list[OutputRow] = []
+    for criterion_id in blocking:
+        criterion = by_id.get(criterion_id)
+        outputs.append(
+            OutputRow(
+                field=criterion_id,
+                value="thiếu",
+                mark_ids=_mark_terms_in_jd(builder, criterion) if criterion else [],
+                note="đây là lý do hồ sơ bị loại sớm",
+                detail=criterion.description if criterion else None,
+            )
+        )
+
+    result = builder.snapshot.get("result") or {}
+    outputs.append(
+        OutputRow(
+            field="rejected_reason",
+            value=result.get("rejected_reason") or "—",
+            detail="nhãn trả về là No Fit vì contract không có nhãn thứ tư",
+        )
+    )
+    outputs.append(
+        OutputRow(
+            field="lượt gọi chấm điểm",
+            value="0",
+            detail="Cổng cắt trước score_criteria, nên không tốn token chấm điểm.",
+        )
+    )
+    return ["cv", "jd"], outputs
+
+
 _BUILDERS: dict[str, Callable[[_Builder], tuple[list[str], list[OutputRow]]]] = {
     "ingest": _ingest,
     "guard": _guard,
     "extract": _extract,
     "score_criteria": _score_criteria,
+    "load_rubric": _load_rubric,
+    "must_have_check": _must_have_check,
+    "reject_fast": _reject_fast,
 }
 
 
