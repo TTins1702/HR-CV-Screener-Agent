@@ -14,7 +14,7 @@ from typing import Any, Callable
 
 from pydantic import BaseModel, Field
 
-from src.contracts.screening import CandidateProfile
+from src.contracts.screening import CandidateProfile, CriterionScore
 from src.tools.evidence import search_evidence
 from src.tools.experience import calculate_experience
 from src.tools.injection import scan_injection
@@ -281,10 +281,56 @@ def _extract(builder: _Builder) -> tuple[list[str], list[OutputRow]]:
     return ["cv"], outputs
 
 
+def _score_criteria(builder: _Builder) -> tuple[list[str], list[OutputRow]]:
+    """Marks come straight from the scores: this evidence already carries offsets.
+
+    `locator="criterion_evidence"` keeps it apart from a span the walkthrough had
+    to go looking for. The two are different kinds of claim.
+    """
+    raw_scores = builder.snapshot.get("criterion_scores") or []
+    if not raw_scores:
+        return ["cv"], [
+            OutputRow(
+                field="criterion_scores",
+                value="chưa có",
+                detail="Node chưa chấm tiêu chí nào trong bước này.",
+            )
+        ]
+
+    outputs: list[OutputRow] = []
+    for raw in raw_scores:
+        score = CriterionScore.model_validate(raw)
+        mark_ids = [
+            mark_id
+            for evidence in score.evidence
+            if (
+                mark_id := builder.add_mark(
+                    "cv",
+                    evidence.start,
+                    evidence.end,
+                    score.criterion_id,
+                    "criterion_evidence",
+                    evidence.score,
+                )
+            )
+        ]
+        outputs.append(
+            OutputRow(
+                field=score.criterion_id,
+                value=f"{score.score:.2f} · {score.tool_used or 'llm'}",
+                mark_ids=mark_ids,
+                note=None if mark_ids else UNLOCATED_NOTE,
+                detail=score.reasoning or None,
+            )
+        )
+    return ["cv"], outputs
+
+
 _BUILDERS: dict[str, Callable[[_Builder], tuple[list[str], list[OutputRow]]]] = {
     "ingest": _ingest,
     "guard": _guard,
     "extract": _extract,
+    "score_criteria": _score_criteria,
 }
 
 

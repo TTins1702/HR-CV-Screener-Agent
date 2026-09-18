@@ -175,3 +175,64 @@ def test_extract_marks_stay_inside_the_cv():
     for mark in slide.marks:
         assert mark.doc == "cv"
         assert 0 <= mark.start < mark.end <= len(CV)
+
+
+SCORES = [
+    {
+        "criterion_id": "backend_language",
+        "score": 1.0,
+        "evidence": [
+            {
+                "quote": "Python",
+                "start": CV.index("Python"),
+                "end": CV.index("Python") + 6,
+                "score": 1.0,
+            }
+        ],
+        "reasoning": "CV nêu Python nhiều lần trong ngữ cảnh công việc.",
+        "tool_used": "search_evidence",
+    },
+    {
+        "criterion_id": "domain",
+        "score": 0.5,
+        "evidence": [],
+        "reasoning": "Không tìm được trích dẫn trực tiếp.",
+        "tool_used": None,
+    },
+]
+
+
+def test_score_criteria_marks_its_own_evidence():
+    slide = build_slides(CV, JD, [_snap("score_criteria", criterion_scores=SCORES)])[0]
+    assert slide.documents == ["cv"]
+    row = next(row for row in slide.outputs if row.field == "backend_language")
+    assert row.mark_ids
+    mark = next(m for m in slide.marks if m.id == row.mark_ids[0])
+    assert mark.locator == "criterion_evidence"
+    assert CV[mark.start : mark.end] == "Python"
+
+
+def test_score_criteria_keeps_the_reasoning_as_detail_not_as_a_problem():
+    slide = build_slides(CV, JD, [_snap("score_criteria", criterion_scores=SCORES)])[0]
+    row = next(row for row in slide.outputs if row.field == "backend_language")
+    assert row.detail == "CV nêu Python nhiều lần trong ngữ cảnh công việc."
+    assert row.note is None
+
+
+def test_score_criteria_flags_a_score_with_no_evidence():
+    slide = build_slides(CV, JD, [_snap("score_criteria", criterion_scores=SCORES)])[0]
+    row = next(row for row in slide.outputs if row.field == "domain")
+    assert row.mark_ids == []
+    assert row.note == UNLOCATED_NOTE
+
+
+def test_score_criteria_shows_the_score_value():
+    slide = build_slides(CV, JD, [_snap("score_criteria", criterion_scores=SCORES)])[0]
+    row = next(row for row in slide.outputs if row.field == "backend_language")
+    assert row.value.startswith("1.00")
+
+
+def test_score_criteria_without_scores_explains_itself():
+    slide = build_slides(CV, JD, [_snap("score_criteria", criterion_scores=[])])[0]
+    assert slide.marks == []
+    assert slide.outputs
