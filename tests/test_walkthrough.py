@@ -102,3 +102,76 @@ def test_a_node_without_a_builder_still_gets_a_slide():
 
 def test_unlocated_note_is_a_non_empty_constant():
     assert UNLOCATED_NOTE.strip()
+
+
+PROFILE = {
+    "raw_text": CV,
+    "skills": ["Python", "PostgreSQL", "Kubernetes"],
+    "work_periods": [
+        {
+            "title": "Senior Backend Engineer",
+            "company": "CloudScale Tech",
+            "start": "2021-03-01",
+            "end": None,
+        }
+    ],
+    "degrees": ["Bachelor of Science in Computer Science"],
+    "certifications": [],
+    "total_experience_years": 5.5,
+    "excluded_years": 0.0,
+    "llm_declared_years": 6.0,
+    "extraction_confidence": 0.9,
+    "missing_fields": [],
+}
+
+
+def test_extract_marks_a_skill_that_appears_in_the_cv():
+    slide = build_slides(CV, JD, [_snap("extract", profile=PROFILE)])[0]
+    assert slide.documents == ["cv"]
+    python_row = next(row for row in slide.outputs if row.value == "Python")
+    assert python_row.mark_ids, "a skill present in the CV must be marked"
+    mark = next(m for m in slide.marks if m.id == python_row.mark_ids[0])
+    assert mark.locator == "search_evidence"
+    assert CV[mark.start : mark.end].lower().startswith("python")
+
+
+def test_extract_reports_a_skill_it_cannot_locate():
+    """Kubernetes is in the profile but nowhere in this CV."""
+    slide = build_slides(CV, JD, [_snap("extract", profile=PROFILE)])[0]
+    row = next(row for row in slide.outputs if row.value == "Kubernetes")
+    assert row.mark_ids == []
+    assert row.note == UNLOCATED_NOTE
+
+
+def test_extract_marks_the_work_period_date_range():
+    slide = build_slides(CV, JD, [_snap("extract", profile=PROFILE)])[0]
+    period_marks = [m for m in slide.marks if m.locator == "calculate_experience"]
+    assert period_marks, "a dated role must be marked on the CV"
+    assert "03/2021" in CV[period_marks[0].start : period_marks[0].end]
+
+
+def test_extract_marks_a_degree():
+    slide = build_slides(CV, JD, [_snap("extract", profile=PROFILE)])[0]
+    row = next(row for row in slide.outputs if row.field == "degrees")
+    assert row.mark_ids
+
+
+def test_extract_reports_the_two_year_counts_separately():
+    """The tool's number and the model's claim are different claims."""
+    slide = build_slides(CV, JD, [_snap("extract", profile=PROFILE)])[0]
+    fields = {row.field for row in slide.outputs}
+    assert "total_experience_years" in fields
+    assert "llm_declared_years" in fields
+
+
+def test_extract_without_a_profile_explains_itself_instead_of_crashing():
+    slide = build_slides(CV, JD, [_snap("extract", profile=None)])[0]
+    assert slide.marks == []
+    assert slide.outputs, "a missing profile still needs a row saying so"
+
+
+def test_extract_marks_stay_inside_the_cv():
+    slide = build_slides(CV, JD, [_snap("extract", profile=PROFILE)])[0]
+    for mark in slide.marks:
+        assert mark.doc == "cv"
+        assert 0 <= mark.start < mark.end <= len(CV)

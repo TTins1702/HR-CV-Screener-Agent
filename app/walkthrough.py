@@ -9,11 +9,16 @@ carries the `locator` that produced it, and the UI shows it.
 
 from __future__ import annotations
 
+from datetime import date
 from typing import Any, Callable
 
 from pydantic import BaseModel, Field
 
+from src.contracts.screening import CandidateProfile
+from src.tools.evidence import search_evidence
+from src.tools.experience import calculate_experience
 from src.tools.injection import scan_injection
+from src.tools.skills import expand_skill
 
 #: Shown on an output row whose value the locators could not place in the text.
 #: Dropping the row instead would make extraction look cleaner than it is.
@@ -165,9 +170,121 @@ def _guard(builder: _Builder) -> tuple[list[str], list[OutputRow]]:
     return ["cv"], outputs
 
 
+def _locate(builder: _Builder, doc: str, query: str, label: str) -> int:
+    """Mark the best span matching `query`, or return 0 if there is none."""
+    source = builder.cv_text if doc == "cv" else builder.jd_text
+    found = search_evidence(source, query, max_results=1)
+    if not found:
+        return 0
+    best = found[0]
+    return builder.add_mark(doc, best.start, best.end, label, "search_evidence", best.score)
+
+
+def _row(field: str, value: str, mark_id: int) -> OutputRow:
+    """An output row that says so when its value could not be placed in the text."""
+    return OutputRow(
+        field=field,
+        value=value,
+        mark_ids=[mark_id] if mark_id else [],
+        note=None if mark_id else UNLOCATED_NOTE,
+    )
+
+
+def _extract(builder: _Builder) -> tuple[list[str], list[OutputRow]]:
+    raw = builder.snapshot.get("profile")
+    if not raw:
+        return ["cv"], [
+            OutputRow(
+                field="profile",
+                value="chưa có",
+                detail="Node chưa trả về hồ sơ có cấu trúc trong bước này.",
+            )
+        ]
+
+    profile = CandidateProfile.model_validate(raw)
+    outputs: list[OutputRow] = []
+
+    for skill in profile.skills:
+        mark_id = 0
+        # Longest surface form first, so "react native" is tried before "react".
+        for form in expand_skill(skill):
+            mark_id = _locate(builder, "cv", form, "skills")
+            if mark_id:
+                break
+        outputs.append(_row("skills", skill, mark_id))
+
+    if profile.work_periods:
+        report = calculate_experience(
+            builder.cv_text, today=date.today(), work_periods=profile.work_periods
+        )
+        for item in report.ranges:
+            if not item.is_employment:
+                continue
+            mark_id = builder.add_mark(
+                "cv",
+                item.source.start,
+                item.source.end,
+                "work_periods",
+                "calculate_experience",
+                item.source.score,
+            )
+            ending = "nay" if item.is_current else item.end.isoformat()
+            outputs.append(
+                _row("work_periods", f"{item.start.isoformat()} → {ending}", mark_id)
+            )
+
+    for degree in profile.degrees:
+        outputs.append(_row("degrees", degree, _locate(builder, "cv", degree, "degrees")))
+
+    for certification in profile.certifications:
+        outputs.append(
+            _row(
+                "certifications",
+                certification,
+                _locate(builder, "cv", certification, "certifications"),
+            )
+        )
+
+    # Two different claims about the same quantity: what the tool measured from
+    # dated ranges, and what the model asserted. They are reported side by side
+    # because the gap between them is the tool's measurable contribution.
+    outputs.append(
+        OutputRow(
+            field="total_experience_years",
+            value=(
+                f"{profile.total_experience_years:.2f}"
+                if profile.total_experience_years is not None
+                else "—"
+            ),
+            detail="do calculate_experience đo từ các khoảng ngày trên CV",
+        )
+    )
+    outputs.append(
+        OutputRow(
+            field="llm_declared_years",
+            value=(
+                f"{profile.llm_declared_years:.2f}"
+                if profile.llm_declared_years is not None
+                else "—"
+            ),
+            detail="do model tự khai, không dùng để chấm",
+        )
+    )
+    outputs.append(
+        OutputRow(field="extraction_confidence", value=f"{profile.extraction_confidence:.2f}")
+    )
+    if profile.missing_fields:
+        outputs.append(
+            OutputRow(field="missing_fields", value=", ".join(profile.missing_fields))
+        )
+
+    return ["cv"], outputs
+
+
 _BUILDERS: dict[str, Callable[[_Builder], tuple[list[str], list[OutputRow]]]] = {
     "ingest": _ingest,
     "guard": _guard,
+    "extract": _extract,
 }
 
 
