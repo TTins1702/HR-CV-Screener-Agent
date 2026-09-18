@@ -190,6 +190,19 @@ per criterion rather than re-deriving the rule, for the same reason
 
 ### 7. Delivery in two stages
 
+**Status: both stages shipped.** Two things came out differently from what this
+section anticipated, and the text below is kept as written for the record:
+
+- `OutputRow` gained a `detail` field alongside `note`. `note` carries a problem
+  the reader should see; `detail` carries the node's own explanation. Collapsing
+  them made a failure to locate a value read like commentary.
+- The bundled preset rubric names **no** `skill_terms` at all -- its criteria
+  carry only a description -- so the JD marks fall back to locating the
+  description, and any match below 1.0 says on the slide that it is approximate.
+  For the same reason `must_have_check` reports three states, not two: a
+  criterion the gate abstained on is not one it passed.
+
+
 **Stage 1** — the frame and the backbone: snapshots, the two payload fields, the
 endpoint, the modal carousel, marks and connectors, and the four slides that
 carry the argument: `ingest`, `guard`, `extract`, `score_criteria`. Other

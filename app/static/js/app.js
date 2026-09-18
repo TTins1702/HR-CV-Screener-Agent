@@ -32,6 +32,13 @@ let selectedCriterionId = "all";
 let currentCvText = "";
 let streamFailed = false;
 
+// One entry per executed node, in order. The final payload alone would credit
+// `extract` with a profile that `repair` rewrote afterwards, and would leave the
+// `repair` slide with nothing to compare against.
+let nodeSnapshots = [];
+let walkthroughSlides = [];
+let walkthroughIndex = 0;
+
 // DOM Elements
 const presetSelect = document.getElementById("presetSelect");
 const scenarioBox = document.getElementById("scenarioBox");
@@ -67,7 +74,9 @@ const btnExportJson = document.getElementById("btnExportJson");
 document.addEventListener("DOMContentLoaded", () => {
   initSettingsModal();
   initTabs();
-  initUploadDropzone();
+  initDocModals();
+  initRubricModal();
+  initWalkthrough();
   fetchPresets();
 
   btnRunScreen.addEventListener("click", handleRunScreening);
@@ -113,27 +122,8 @@ function activateTab(tabId) {
 }
 
 function initTabs() {
-  // Input CV tabs (Text vs Upload)
-  const tabCvText = document.getElementById("tabCvText");
-  const tabCvUpload = document.getElementById("tabCvUpload");
-  const cvTextInputWrapper = document.getElementById("cvTextInputWrapper");
-  const cvUploadWrapper = document.getElementById("cvUploadWrapper");
-
-  tabCvText.addEventListener("click", () => {
-    tabCvText.classList.add("active");
-    tabCvUpload.classList.remove("active");
-    cvTextInputWrapper.style.display = "block";
-    cvUploadWrapper.style.display = "none";
-  });
-
-  tabCvUpload.addEventListener("click", () => {
-    tabCvUpload.classList.add("active");
-    tabCvText.classList.remove("active");
-    cvTextInputWrapper.style.display = "none";
-    cvUploadWrapper.style.display = "block";
-  });
-
-  // Output Tabs (Scorecard, Evidence, Trace, E2)
+  // Output Tabs (Scorecard, Evidence, Trace, E2). The CV/JD input tabs are wired
+  // per-modal by initDocModals().
   const tabBtns = outputTabNav.querySelectorAll(".tab-btn");
   tabBtns.forEach((btn) => {
     btn.addEventListener("click", () => {
@@ -172,18 +162,168 @@ function handlePresetChange() {
     expectedBranch.textContent = found.expected_branch;
     cvTextEl.value = found.cv_text;
     jdTextEl.value = found.jd_text;
+    docSource.cv = "Preset";
+    docSource.jd = "Preset";
     document.getElementById("presetBadge").textContent = "Đã nạp Preset";
     rubricSelect.value = "backend_engineer";
   } else {
     scenarioBox.style.display = "none";
     document.getElementById("presetBadge").textContent = "Tùy chỉnh";
   }
+
+  // The documents live behind the modals now, so the status lines are the only
+  // place the panel says a preset landed.
+  renderDocStatus("cv");
+  renderDocStatus("jd");
+  renderRubricStatus();
 }
 
-function initUploadDropzone() {
-  const dropzone = document.getElementById("dropzone");
-  const fileInput = document.getElementById("fileInput");
-  const uploadStatus = document.getElementById("uploadStatus");
+// ============================================================================
+// 3b. Document Modals (CV & JD) and the Rubric Modal
+// ============================================================================
+
+// Both document modals are the same screen over a different textarea, so one
+// factory wires each: `statusId` is the row it keeps up to date under the action
+// buttons, `buttonId` the button that opens it.
+const DOC_MODALS = {
+  cv: { modalId: "cvModal", buttonId: "btnOpenCv", textareaId: "cvText", statusId: "statusCv" },
+  jd: { modalId: "jdModal", buttonId: "btnOpenJd", textareaId: "jdText", statusId: "statusJd" },
+};
+
+// Where each document's text came from — a filename, "Nhập tay" or "Preset" —
+// shown in the status line so the panel says what was loaded without showing it.
+// `null` means nothing has been supplied yet.
+const docSource = { cv: null, jd: null };
+
+// The bundled rubrics are static YAML on the server, so one fetch per preset is
+// enough however often the modal is reopened.
+const rubricCache = {};
+
+function formatCount(n) {
+  return n.toLocaleString("vi-VN");
+}
+
+function docSummary(kind) {
+  const text = document.getElementById(DOC_MODALS[kind].textareaId).value.trim();
+  if (!text) return null;
+  return `${docSource[kind] || "Nhập tay"} · ${formatCount(text.length)} ký tự`;
+}
+
+function renderDocStatus(kind) {
+  const item = document.getElementById(DOC_MODALS[kind].statusId);
+  const mark = item.querySelector(".doc-status-mark");
+  const value = item.querySelector(".doc-status-value");
+  const summary = docSummary(kind);
+
+  item.classList.toggle("is-empty", !summary);
+  mark.textContent = summary ? "✓" : "○";
+  value.textContent = summary || "Chưa có dữ liệu";
+  value.title = summary || "";
+}
+
+function initDocModal(kind) {
+  const cfg = DOC_MODALS[kind];
+  const modal = document.getElementById(cfg.modalId);
+  const textarea = document.getElementById(cfg.textareaId);
+  const dropzone = modal.querySelector("[data-dropzone]");
+  const fileInput = modal.querySelector("[data-file-input]");
+  const uploadStatus = modal.querySelector("[data-upload-status]");
+  const charCount = modal.querySelector("[data-char-count]");
+
+  // What "Hủy" restores. Taken when the modal opens, because a cancelled edit —
+  // including an upload that replaced the whole document — has to leave the
+  // previous text exactly as it was.
+  let snapshot = { text: "", source: null };
+
+  function refreshCharCount() {
+    charCount.textContent = docSummary(kind) || "Chưa có nội dung";
+  }
+
+  function selectTab(name) {
+    modal.querySelectorAll("[data-doc-tab]").forEach((btn) => {
+      btn.classList.toggle("active", btn.dataset.docTab === name);
+    });
+    modal.querySelectorAll("[data-doc-pane]").forEach((pane) => {
+      pane.style.display = pane.dataset.docPane === name ? "block" : "none";
+    });
+  }
+
+  function open() {
+    snapshot = { text: textarea.value, source: docSource[kind] };
+    uploadStatus.textContent = "";
+    fileInput.value = "";
+    selectTab("text");
+    refreshCharCount();
+    modal.classList.add("open");
+    textarea.focus();
+    // Assigning `.value` leaves the caret at the end, and focusing then scrolls
+    // the textarea there. A reviewer opening a document wants its first line.
+    textarea.setSelectionRange(0, 0);
+    textarea.scrollTop = 0;
+  }
+
+  function cancel() {
+    textarea.value = snapshot.text;
+    docSource[kind] = snapshot.source;
+    renderDocStatus(kind);
+    modal.classList.remove("open");
+  }
+
+  function confirm() {
+    renderDocStatus(kind);
+    modal.classList.remove("open");
+  }
+
+  async function uploadFile(file) {
+    uploadStatus.textContent = `Đang tải lên & trích xuất ${file.name}...`;
+    uploadStatus.style.color = "";
+    const formData = new FormData();
+    formData.append("file", file);
+
+    try {
+      const res = await fetch("/api/upload", { method: "POST", body: formData });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.detail || "Upload failed");
+      }
+      const data = await res.json();
+      textarea.value = data.text;
+      docSource[kind] = data.filename;
+      uploadStatus.textContent = `✓ Đã trích xuất ${formatCount(data.char_count)} ký tự từ ${data.filename}`;
+      uploadStatus.style.color = "#059669";
+      refreshCharCount();
+      // Extraction quality varies by PDF, so land on the text the agent will
+      // actually read rather than on a success message about it.
+      selectTab("text");
+    } catch (err) {
+      uploadStatus.textContent = `Lỗi: ${err.message}`;
+      uploadStatus.style.color = "#DC2626";
+    }
+  }
+
+  document.getElementById(cfg.buttonId).addEventListener("click", open);
+
+  modal.querySelectorAll("[data-doc-tab]").forEach((btn) => {
+    btn.addEventListener("click", () => selectTab(btn.dataset.docTab));
+  });
+
+  modal.querySelectorAll("[data-modal-cancel]").forEach((btn) => {
+    btn.addEventListener("click", cancel);
+  });
+  modal.querySelector("[data-modal-confirm]").addEventListener("click", confirm);
+  modal.addEventListener("click", (e) => {
+    if (e.target === modal) cancel();
+  });
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && modal.classList.contains("open")) cancel();
+  });
+
+  // Typing over a preset or an extracted file makes the text manual, and the
+  // status line should stop crediting the old source.
+  textarea.addEventListener("input", () => {
+    docSource[kind] = textarea.value.trim() ? "Nhập tay" : null;
+    refreshCharCount();
+  });
 
   dropzone.addEventListener("click", () => fileInput.click());
 
@@ -210,29 +350,121 @@ function initUploadDropzone() {
     }
   });
 
-  async function uploadFile(file) {
-    uploadStatus.textContent = `Đang tải lên & trích xuất ${file.name}...`;
-    const formData = new FormData();
-    formData.append("file", file);
+  renderDocStatus(kind);
+}
 
-    try {
-      const res = await fetch("/api/upload", {
-        method: "POST",
-        body: formData,
-      });
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.detail || "Upload failed");
-      }
-      const data = await res.json();
-      cvTextEl.value = data.text;
-      uploadStatus.textContent = `✓ Đã trích xuất ${data.char_count} ký tự từ ${data.filename}`;
-      uploadStatus.style.color = "#059669";
-    } catch (err) {
-      uploadStatus.textContent = `Lỗi: ${err.message}`;
-      uploadStatus.style.color = "#DC2626";
-    }
+function initDocModals() {
+  Object.keys(DOC_MODALS).forEach(initDocModal);
+}
+
+async function fetchRubric(preset) {
+  if (!rubricCache[preset]) {
+    const res = await fetch(`/api/rubrics/${preset}`);
+    if (!res.ok) throw new Error(`máy chủ trả về HTTP ${res.status}`);
+    rubricCache[preset] = await res.json();
   }
+  return rubricCache[preset];
+}
+
+function renderRubricStatus() {
+  const value = document.getElementById("statusRubric").querySelector(".doc-status-value");
+  const preset = rubricSelect.value;
+
+  if (preset === "auto") {
+    value.textContent = "Tự động suy luận từ JD";
+    return;
+  }
+  const rubric = rubricCache[preset];
+  value.textContent = rubric
+    ? `${rubric.job_title} · ${rubric.criteria.length} tiêu chí`
+    : rubricSelect.options[rubricSelect.selectedIndex].textContent;
+}
+
+function renderRubricCriteria(rubric) {
+  const thresholds = `
+    <div class="rubric-thresholds">
+      <div class="rubric-threshold good">
+        <strong>≥ ${rubric.good_fit_threshold.toFixed(2)}</strong>Ngưỡng Good Fit
+      </div>
+      <div class="rubric-threshold potential">
+        <strong>≥ ${rubric.potential_fit_threshold.toFixed(2)}</strong>Ngưỡng Potential Fit
+      </div>
+    </div>`;
+
+  const criteria = rubric.criteria
+    .map(
+      (c) => `
+    <div class="rubric-criterion">
+      <div class="rubric-crit-head">
+        <span class="rubric-crit-id">${escapeHtml(c.id)}</span>
+        ${c.must_have ? '<span class="rubric-must">MUST-HAVE</span>' : ""}
+        <span class="rubric-crit-weight">${Math.round(c.weight * 100)}%</span>
+      </div>
+      <div class="rubric-weight-bar">
+        <div class="rubric-weight-fill" style="width: ${(c.weight * 100).toFixed(1)}%"></div>
+      </div>
+      <div class="rubric-crit-desc">${escapeHtml(c.description)}</div>
+    </div>`
+    )
+    .join("");
+
+  return thresholds + criteria;
+}
+
+async function renderRubricDetail() {
+  const detail = document.getElementById("rubricDetail");
+  const footNote = document.getElementById("rubricWeightSum");
+  const preset = rubricSelect.value;
+
+  if (preset === "auto") {
+    detail.innerHTML =
+      '<div class="rubric-note">Chưa cố định bộ tiêu chí. Node <code>derive_rubric</code> ' +
+      "sẽ suy luận tiêu chí và trọng số trực tiếp từ JD khi chạy, nên bảng chi tiết chỉ " +
+      "xuất hiện trong kết quả sàng lọc.</div>";
+    footNote.textContent = "";
+    renderRubricStatus();
+    return;
+  }
+
+  detail.innerHTML = '<div class="rubric-note">Đang tải bộ tiêu chí...</div>';
+  try {
+    const rubric = await fetchRubric(preset);
+    detail.innerHTML = renderRubricCriteria(rubric);
+    footNote.textContent = `${rubric.criteria.length} tiêu chí · tổng trọng số 100%`;
+  } catch (err) {
+    detail.innerHTML = `<div class="rubric-note error">Không tải được bộ tiêu chí: ${escapeHtml(err.message)}</div>`;
+    footNote.textContent = "";
+  }
+  renderRubricStatus();
+}
+
+function initRubricModal() {
+  const modal = document.getElementById("rubricModal");
+
+  function close() {
+    modal.classList.remove("open");
+  }
+
+  document.getElementById("btnOpenRubric").addEventListener("click", () => {
+    modal.classList.add("open");
+    renderRubricDetail();
+  });
+
+  rubricSelect.addEventListener("change", renderRubricDetail);
+  modal.querySelectorAll("[data-modal-cancel]").forEach((btn) => {
+    btn.addEventListener("click", close);
+  });
+  modal.querySelector("[data-modal-confirm]").addEventListener("click", close);
+  modal.addEventListener("click", (e) => {
+    if (e.target === modal) close();
+  });
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && modal.classList.contains("open")) close();
+  });
+
+  // Fill the status line with the real criterion count before the modal is ever
+  // opened; a failed fetch just leaves the dropdown's own label in place.
+  fetchRubric(rubricSelect.value).then(renderRubricStatus).catch(() => {});
 }
 
 // ============================================================================
@@ -243,6 +475,8 @@ async function handleRunScreening() {
   const jdText = jdTextEl.value.trim();
   currentCvText = cvText;
   streamFailed = false;
+  nodeSnapshots = [];
+  walkthroughSlides = [];
 
   if (!cvText || !jdText) {
     alert("Vui lòng cung cấp đầy đủ cả CV ứng viên và Mô tả công việc (JD).");
@@ -331,6 +565,7 @@ async function handleRunScreening() {
     if (latestScreeningState) {
       renderStepper(latestScreeningState.node_traces, null, true);
     }
+    await loadWalkthrough();
   } catch (err) {
     console.error("Streaming error:", err);
     pipelineStatusBadge.textContent = "Thất bại";
@@ -345,6 +580,13 @@ async function handleRunScreening() {
 function handleStreamEvent(event) {
   if (event.type === "step") {
     latestScreeningState = event;
+
+    // Keyed on path length, not on the node name: `repair` can run twice in a
+    // row and comparing names would fold two real passes into one.
+    if (event.path_taken && event.path_taken.length > nodeSnapshots.length) {
+      nodeSnapshots.push({ ...event, node: event.current_node });
+    }
+
     updateTelemetry(event.node_traces);
     renderStepper(event.node_traces, event.next_node, false);
 
@@ -413,6 +655,9 @@ function renderStepper(nodeTraces, nextNode, isDone = false) {
     const tokenChip = tokenSum > 0 ? `<span class="chip">🪙 ${tokenSum} tok</span>` : "";
     const latencyChip = `<span class="chip">⏱️ ${Math.round(trace.latency_ms)}ms</span>`;
     const noteHtml = trace.note ? `<div class="step-note">${escapeHtml(trace.note)}</div>` : "";
+    const detailHtml = walkthroughSlides[idx]
+      ? `<button type="button" class="step-detail-btn" data-wt-index="${idx}">🔍 Chi tiết kỹ thuật</button>`
+      : "";
 
     card.innerHTML = `
       <div class="step-header">
@@ -429,9 +674,17 @@ function renderStepper(nodeTraces, nextNode, isDone = false) {
         ${llmChip}
       </div>
       ${noteHtml}
+      ${detailHtml}
     `;
 
     stepperContainer.appendChild(card);
+
+    const detailBtn = card.querySelector(".step-detail-btn");
+    if (detailBtn) {
+      detailBtn.addEventListener("click", () =>
+        openWalkthrough(Number(detailBtn.dataset.wtIndex))
+      );
+    }
   });
 
   // 2. If the pipeline is running and there is a next active node, render RUNNING card
@@ -459,6 +712,234 @@ function renderStepper(nodeTraces, nextNode, isDone = false) {
 
   // Auto scroll stepper to bottom
   stepperContainer.scrollTop = stepperContainer.scrollHeight;
+}
+
+// ============================================================================
+// 5b. Node Walkthrough Carousel
+// ============================================================================
+async function loadWalkthrough() {
+  walkthroughSlides = [];
+  if (nodeSnapshots.length === 0) return;
+
+  try {
+    const res = await fetch("/api/walkthrough", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        // `currentCvText` is the exact string the server scored. Every offset in
+        // every mark is an index into it, so passing the textarea instead would
+        // shift each mark by whatever `trim()` removed.
+        cv_text: currentCvText,
+        jd_text: jdTextEl.value.trim(),
+        snapshots: nodeSnapshots,
+      }),
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    walkthroughSlides = (await res.json()).slides || [];
+  } catch (err) {
+    console.error("Failed to load walkthrough:", err);
+  }
+  // Repaint: the trace cards only grow a button once their slide exists.
+  if (latestScreeningState) {
+    renderStepper(latestScreeningState.node_traces, null, true);
+  }
+}
+
+function renderWalkthroughDoc(slide, doc, text) {
+  const marks = slide.marks
+    .filter((m) => m.doc === doc)
+    .sort((a, b) => a.start - b.start);
+
+  // Overlapping spans would nest one mark inside another; the first one wins,
+  // which is the same rule the Evidence tab's highlighter uses.
+  let html = "";
+  let cursor = 0;
+  for (const mark of marks) {
+    if (mark.start < cursor || mark.end > text.length) continue;
+    html += escapeHtml(text.slice(cursor, mark.start));
+    html +=
+      `<span class="wt-mark" data-mark-id="${mark.id}" title="${escapeHtml(mark.label)}">` +
+      `<span class="wt-mark-badge">${mark.id}</span>${escapeHtml(
+        text.slice(mark.start, mark.end)
+      )}</span>`;
+    cursor = mark.end;
+  }
+  html += escapeHtml(text.slice(cursor));
+
+  const title = doc === "cv" ? "CV ứng viên" : "Mô tả công việc (JD)";
+  return `
+    <div class="wt-doc-card">
+      <div class="wt-doc-head">${title}</div>
+      <div class="wt-doc-text">${html}</div>
+    </div>`;
+}
+
+function renderWalkthroughSlide(index) {
+  const slide = walkthroughSlides[index];
+  if (!slide) return;
+  walkthroughIndex = index;
+
+  document.getElementById("wtNodeName").textContent = slide.node;
+  document.getElementById("wtPosition").textContent = `${index + 1}/${walkthroughSlides.length}`;
+  document.getElementById("wtSummary").textContent = slide.summary;
+  document.getElementById("wtCaption").textContent = slide.caption;
+
+  const docs = document.getElementById("wtDocs");
+  docs.classList.toggle("wt-docs--pair", slide.documents.length > 1);
+  docs.innerHTML = slide.documents
+    .map((doc) =>
+      renderWalkthroughDoc(slide, doc, doc === "cv" ? currentCvText : jdTextEl.value.trim())
+    )
+    .join("");
+  if (!slide.documents.length) {
+    docs.innerHTML =
+      '<div class="wt-summary">Node này không đọc CV hay JD — nó chỉ tổng hợp kết quả của các node trước.</div>';
+  }
+
+  const locators = [...new Set(slide.marks.map((m) => m.locator))];
+  const locatorHtml = locators.length
+    ? `<div class="wt-summary">Span được định vị bởi: ${locators
+        .map((l) => `<span class="wt-locator-chip">${escapeHtml(l)}</span>`)
+        .join(" ")}</div>`
+    : "";
+
+  document.getElementById("wtOutputs").innerHTML =
+    locatorHtml +
+    slide.outputs
+      .map((row) => {
+        const badges = (row.mark_ids || [])
+          .map((id) => `<span class="wt-row-badge">${id}</span>`)
+          .join("");
+        const detail = row.detail
+          ? `<div class="wt-detail">${escapeHtml(row.detail)}</div>`
+          : "";
+        const note = row.note ? `<div class="wt-note">⚠ ${escapeHtml(row.note)}</div>` : "";
+        return `
+          <div class="wt-output-row" data-mark-ids="${(row.mark_ids || []).join(",")}">
+            <div class="wt-row-head">
+              ${badges}
+              <span class="wt-row-field">${escapeHtml(row.field)}</span>
+              <span class="wt-row-value">${escapeHtml(row.value)}</span>
+            </div>
+            ${detail}${note}
+          </div>`;
+      })
+      .join("");
+
+  document.getElementById("btnWtPrev").disabled = index === 0;
+  document.getElementById("btnWtNext").disabled = index === walkthroughSlides.length - 1;
+  document.getElementById("wtDocs").scrollTop = 0;
+  document.getElementById("wtOutputs").scrollTop = 0;
+}
+
+function openWalkthrough(index) {
+  if (!walkthroughSlides.length) return;
+  renderWalkthroughSlide(Math.min(Math.max(index, 0), walkthroughSlides.length - 1));
+  document.getElementById("walkthroughModal").classList.add("open");
+}
+
+function clearWalkthroughConnector() {
+  document.getElementById("wtConnector").innerHTML = "";
+  document
+    .querySelectorAll("#walkthroughModal .is-linked")
+    .forEach((el) => el.classList.remove("is-linked"));
+}
+
+function drawWalkthroughConnector(markIds, row) {
+  clearWalkthroughConnector();
+  if (!markIds.length) return;
+
+  const body = document.querySelector("#walkthroughModal .wt-body");
+  const svg = document.getElementById("wtConnector");
+  const frame = body.getBoundingClientRect();
+  if (row) row.classList.add("is-linked");
+
+  const rowBox = row ? row.getBoundingClientRect() : null;
+  const docsBox = document.getElementById("wtDocs").getBoundingClientRect();
+  let paths = "";
+
+  for (const id of markIds) {
+    const mark = body.querySelector(`.wt-mark[data-mark-id="${id}"]`);
+    if (!mark) continue;
+    mark.classList.add("is-linked");
+    if (!rowBox) continue;
+
+    const markBox = mark.getBoundingClientRect();
+    // A mark scrolled out of view would otherwise get a line pointing off into
+    // the page, which reads as an arrow to the wrong text. Measure against the
+    // mark's own scroller when it has one -- with CV and JD side by side each
+    // card scrolls separately, and the column's bounds no longer tell us.
+    const scroller = mark.closest(".wt-doc-text") || document.getElementById("wtDocs");
+    const bounds = scroller.getBoundingClientRect();
+    if (markBox.bottom < bounds.top || markBox.top > bounds.bottom) continue;
+    if (markBox.bottom < docsBox.top || markBox.top > docsBox.bottom) continue;
+
+    const x1 = markBox.right - frame.left;
+    const y1 = markBox.top + markBox.height / 2 - frame.top;
+    const x2 = rowBox.left - frame.left;
+    const y2 = rowBox.top + rowBox.height / 2 - frame.top;
+    const mid = (x1 + x2) / 2;
+    paths += `<path d="M ${x1} ${y1} C ${mid} ${y1}, ${mid} ${y2}, ${x2} ${y2}" />`;
+  }
+  svg.innerHTML = paths;
+}
+
+function initWalkthrough() {
+  const modal = document.getElementById("walkthroughModal");
+
+  function close() {
+    clearWalkthroughConnector();
+    modal.classList.remove("open");
+  }
+
+  function step(delta) {
+    const next = walkthroughIndex + delta;
+    if (next < 0 || next >= walkthroughSlides.length) return;
+    clearWalkthroughConnector();
+    renderWalkthroughSlide(next);
+  }
+
+  document.getElementById("btnWtPrev").addEventListener("click", () => step(-1));
+  document.getElementById("btnWtNext").addEventListener("click", () => step(1));
+
+  modal
+    .querySelectorAll("[data-modal-cancel]")
+    .forEach((btn) => btn.addEventListener("click", close));
+  modal.querySelector("[data-modal-confirm]").addEventListener("click", close);
+  modal.addEventListener("click", (e) => {
+    if (e.target === modal) close();
+  });
+
+  document.addEventListener("keydown", (e) => {
+    if (!modal.classList.contains("open")) return;
+    if (e.key === "Escape") close();
+    if (e.key === "ArrowLeft") step(-1);
+    if (e.key === "ArrowRight") step(1);
+  });
+
+  // Delegated, because both columns are rebuilt on every slide change.
+  modal.addEventListener("mouseover", (e) => {
+    const row = e.target.closest(".wt-output-row");
+    if (row) {
+      const ids = (row.dataset.markIds || "").split(",").filter(Boolean).map(Number);
+      drawWalkthroughConnector(ids, row);
+      return;
+    }
+    const mark = e.target.closest(".wt-mark");
+    if (mark) {
+      const id = Number(mark.dataset.markId);
+      const owner = [...modal.querySelectorAll(".wt-output-row")].find((r) =>
+        (r.dataset.markIds || "").split(",").includes(String(id))
+      );
+      drawWalkthroughConnector([id], owner || null);
+    }
+  });
+
+  modal.addEventListener("mouseleave", clearWalkthroughConnector);
+  // The line is drawn from live positions, so it has to go when they change.
+  // Captured, because `scroll` does not bubble and the card scrollers are rebuilt
+  // on every slide change.
+  modal.addEventListener("scroll", clearWalkthroughConnector, true);
 }
 
 // ============================================================================

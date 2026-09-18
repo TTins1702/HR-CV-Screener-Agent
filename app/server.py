@@ -22,6 +22,7 @@ from pydantic import BaseModel, Field
 
 from app.demo_cases import DEMO_CASES
 from app.parsers import extract_text_from_file
+from app.walkthrough import build_slides
 from src.contracts.ablations import Ablations
 from src.contracts.rubric import JDRubric
 from src.contracts.state import ScreeningState
@@ -120,6 +121,59 @@ async def upload_document(file: UploadFile = File(...)):
         }
     except Exception as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+RUBRIC_DIR = REPO_ROOT / "data" / "rubrics"
+
+
+@app.get("/api/rubrics/{preset}")
+async def get_rubric(preset: str):
+    """Return one bundled rubric preset so the UI can show what it scores against."""
+    # Servable presets are exactly the YAML files sitting directly in data/rubrics.
+    # Matching against that listing rather than building a path from `preset` keeps
+    # a caller from reaching either the LLM-derived rubrics under `derived/` or
+    # anything outside the directory at all.
+    available = {path.stem for path in RUBRIC_DIR.glob("*.yaml")}
+    if preset not in available:
+        raise HTTPException(status_code=404, detail=f"Unknown rubric preset: {preset!r}")
+
+    rubric = load_rubric(RUBRIC_DIR / f"{preset}.yaml")
+    return {
+        "preset": preset,
+        "job_title": rubric.job_title,
+        "good_fit_threshold": rubric.good_fit_threshold,
+        "potential_fit_threshold": rubric.potential_fit_threshold,
+        "criteria": [
+            {
+                "id": criterion.id,
+                "description": criterion.description,
+                "weight": criterion.weight,
+                "must_have": criterion.must_have,
+                "kind": criterion.kind,
+            }
+            for criterion in rubric.criteria
+        ],
+    }
+
+
+class WalkthroughRequest(BaseModel):
+    """One completed run, as the client streamed it."""
+
+    cv_text: str
+    jd_text: str
+    #: One entry per executed node, in order -- the step payloads the client kept.
+    snapshots: list[dict[str, Any]] = Field(default_factory=list)
+
+
+@app.post("/api/walkthrough")
+async def walkthrough(req: WalkthroughRequest):
+    """Build the per-node walkthrough slides for a run the client already made.
+
+    Nothing is re-executed: the snapshots are the states the run passed through,
+    and the locators only read them.
+    """
+    slides = build_slides(req.cv_text, req.jd_text, req.snapshots)
+    return {"slides": [slide.model_dump(mode="json") for slide in slides]}
 
 
 # The graph's four conditional edges, keyed by the node each one hangs off. The
@@ -273,6 +327,15 @@ async def stream_screening(req: ScreenRequest):
                         if current_st.profile
                         else None
                     ),
+                    "rubric": (
+                        current_st.rubric.model_dump(mode="json")
+                        if current_st.rubric
+                        else None
+                    ),
+                    "criterion_scores": [
+                        score.model_dump(mode="json")
+                        for score in current_st.criterion_scores
+                    ],
                     "scorecard": (
                         current_st.scorecard.model_dump(mode="json")
                         if current_st.scorecard
