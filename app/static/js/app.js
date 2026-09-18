@@ -76,6 +76,7 @@ document.addEventListener("DOMContentLoaded", () => {
   initTabs();
   initDocModals();
   initRubricModal();
+  initWalkthrough();
   fetchPresets();
 
   btnRunScreen.addEventListener("click", handleRunScreening);
@@ -834,6 +835,104 @@ function openWalkthrough(index) {
   if (!walkthroughSlides.length) return;
   renderWalkthroughSlide(Math.min(Math.max(index, 0), walkthroughSlides.length - 1));
   document.getElementById("walkthroughModal").classList.add("open");
+}
+
+function clearWalkthroughConnector() {
+  document.getElementById("wtConnector").innerHTML = "";
+  document
+    .querySelectorAll("#walkthroughModal .is-linked")
+    .forEach((el) => el.classList.remove("is-linked"));
+}
+
+function drawWalkthroughConnector(markIds, row) {
+  clearWalkthroughConnector();
+  if (!markIds.length) return;
+
+  const body = document.querySelector("#walkthroughModal .wt-body");
+  const svg = document.getElementById("wtConnector");
+  const frame = body.getBoundingClientRect();
+  if (row) row.classList.add("is-linked");
+
+  const rowBox = row ? row.getBoundingClientRect() : null;
+  const docsBox = document.getElementById("wtDocs").getBoundingClientRect();
+  let paths = "";
+
+  for (const id of markIds) {
+    const mark = body.querySelector(`.wt-mark[data-mark-id="${id}"]`);
+    if (!mark) continue;
+    mark.classList.add("is-linked");
+    if (!rowBox) continue;
+
+    const markBox = mark.getBoundingClientRect();
+    // A mark scrolled out of its own column would otherwise get a line pointing
+    // off into the page, which reads as an arrow to the wrong text.
+    if (markBox.bottom < docsBox.top || markBox.top > docsBox.bottom) continue;
+
+    const x1 = markBox.right - frame.left;
+    const y1 = markBox.top + markBox.height / 2 - frame.top;
+    const x2 = rowBox.left - frame.left;
+    const y2 = rowBox.top + rowBox.height / 2 - frame.top;
+    const mid = (x1 + x2) / 2;
+    paths += `<path d="M ${x1} ${y1} C ${mid} ${y1}, ${mid} ${y2}, ${x2} ${y2}" />`;
+  }
+  svg.innerHTML = paths;
+}
+
+function initWalkthrough() {
+  const modal = document.getElementById("walkthroughModal");
+
+  function close() {
+    clearWalkthroughConnector();
+    modal.classList.remove("open");
+  }
+
+  function step(delta) {
+    const next = walkthroughIndex + delta;
+    if (next < 0 || next >= walkthroughSlides.length) return;
+    clearWalkthroughConnector();
+    renderWalkthroughSlide(next);
+  }
+
+  document.getElementById("btnWtPrev").addEventListener("click", () => step(-1));
+  document.getElementById("btnWtNext").addEventListener("click", () => step(1));
+
+  modal
+    .querySelectorAll("[data-modal-cancel]")
+    .forEach((btn) => btn.addEventListener("click", close));
+  modal.querySelector("[data-modal-confirm]").addEventListener("click", close);
+  modal.addEventListener("click", (e) => {
+    if (e.target === modal) close();
+  });
+
+  document.addEventListener("keydown", (e) => {
+    if (!modal.classList.contains("open")) return;
+    if (e.key === "Escape") close();
+    if (e.key === "ArrowLeft") step(-1);
+    if (e.key === "ArrowRight") step(1);
+  });
+
+  // Delegated, because both columns are rebuilt on every slide change.
+  modal.addEventListener("mouseover", (e) => {
+    const row = e.target.closest(".wt-output-row");
+    if (row) {
+      const ids = (row.dataset.markIds || "").split(",").filter(Boolean).map(Number);
+      drawWalkthroughConnector(ids, row);
+      return;
+    }
+    const mark = e.target.closest(".wt-mark");
+    if (mark) {
+      const id = Number(mark.dataset.markId);
+      const owner = [...modal.querySelectorAll(".wt-output-row")].find((r) =>
+        (r.dataset.markIds || "").split(",").includes(String(id))
+      );
+      drawWalkthroughConnector([id], owner || null);
+    }
+  });
+
+  modal.addEventListener("mouseleave", clearWalkthroughConnector);
+  // The line is drawn from live positions, so it has to go when they change.
+  document.getElementById("wtDocs").addEventListener("scroll", clearWalkthroughConnector);
+  document.getElementById("wtOutputs").addEventListener("scroll", clearWalkthroughConnector);
 }
 
 // ============================================================================
