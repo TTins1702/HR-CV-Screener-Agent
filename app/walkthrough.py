@@ -20,6 +20,7 @@ from src.contracts.state import ScreeningState
 from src.graph.rubric_nodes import blocking_must_haves, required_years
 from src.tools.evidence import search_evidence
 from src.tools.experience import calculate_experience
+from src.contracts.tools import InjectionSeverity
 from src.tools.injection import scan_injection
 from src.tools.skills import expand_skill
 
@@ -88,10 +89,19 @@ class Slide(BaseModel):
 class _Builder:
     """Per-slide state: the documents, and a mark-id counter scoped to the slide."""
 
-    def __init__(self, cv_text: str, jd_text: str, snapshot: dict[str, Any]):
+    def __init__(
+        self,
+        cv_text: str,
+        jd_text: str,
+        snapshot: dict[str, Any],
+        previous: dict[str, Any] | None = None,
+    ):
         self.cv_text = cv_text
         self.jd_text = jd_text
         self.snapshot = snapshot
+        #: The step before this one. `repair` and `deep_review` are diffs, and a
+        #: diff against the final state would always report no change.
+        self.previous = previous
         self.marks: list[Mark] = []
         self._next_id = 1
 
@@ -503,6 +513,176 @@ def _reject_fast(builder: _Builder) -> tuple[list[str], list[OutputRow]]:
     return ["cv", "jd"], outputs
 
 
+def _quarantine(builder: _Builder) -> tuple[list[str], list[OutputRow]]:
+    """Terminal node for a document the graph refuses to score."""
+    report = scan_injection(builder.cv_text)
+    outputs: list[OutputRow] = []
+
+    for finding in report.findings:
+        mark_id = builder.add_mark(
+            "cv",
+            finding.evidence.start,
+            finding.evidence.end,
+            finding.rule_id,
+            "scan_injection",
+            finding.evidence.score,
+        )
+        outputs.append(
+            OutputRow(
+                field=finding.rule_id,
+                value=finding.severity.value,
+                mark_ids=[mark_id] if mark_id else [],
+                note=(
+                    "luật mức HIGH — đây là thứ kích hoạt cách ly"
+                    if finding.severity is InjectionSeverity.HIGH
+                    else None
+                ),
+            )
+        )
+
+    flags = builder.snapshot.get("injection_flags") or []
+    if flags:
+        outputs.append(OutputRow(field="injection_flags", value=", ".join(flags)))
+
+    result = builder.snapshot.get("result") or {}
+    outputs.append(
+        OutputRow(
+            field="rejected_reason",
+            value=result.get("rejected_reason") or "—",
+            detail="lý do thật của quyết định nằm ở đây",
+        )
+    )
+    outputs.append(
+        OutputRow(
+            field="label",
+            value=result.get("label") or "No Fit",
+            detail=(
+                "Contract chỉ có ba nhãn, không có nhãn thứ tư cho 'từ chối xử lý'. "
+                "Đọc nhãn này mà không đọc rejected_reason là hiểu sai kết quả."
+            ),
+        )
+    )
+    return ["cv"], outputs
+
+
+def _profile_fields(raw: dict[str, Any] | None) -> dict[str, str]:
+    """The profile's scalar view, for diffing one pass against the next."""
+    if not raw:
+        return {}
+    profile = CandidateProfile.model_validate(raw)
+    return {
+        "skills": ", ".join(profile.skills),
+        "degrees": ", ".join(profile.degrees),
+        "certifications": ", ".join(profile.certifications),
+        "work_periods": str(len(profile.work_periods)),
+        "total_experience_years": (
+            f"{profile.total_experience_years:.2f}"
+            if profile.total_experience_years is not None
+            else "—"
+        ),
+        "extraction_confidence": f"{profile.extraction_confidence:.2f}",
+        "missing_fields": ", ".join(profile.missing_fields) or "—",
+    }
+
+
+def _repair(builder: _Builder) -> tuple[list[str], list[OutputRow]]:
+    """What this pass rewrote, against the pass before it.
+
+    The comparison is why each node keeps its own snapshot: read off the final
+    state, every repair slide would show the repaired profile on both sides and
+    claim nothing changed.
+    """
+    after = _profile_fields(builder.snapshot.get("profile"))
+    before = _profile_fields((builder.previous or {}).get("profile"))
+
+    outputs: list[OutputRow] = []
+    for field, new_value in after.items():
+        old_value = before.get(field)
+        if old_value is None or old_value == new_value:
+            continue
+        outputs.append(
+            OutputRow(
+                field=field,
+                value=f"{old_value or '—'} → {new_value or '—'}",
+                detail="trường này bị viết lại trong lượt vá",
+            )
+        )
+
+    if not outputs:
+        outputs.append(
+            OutputRow(
+                field="thay đổi",
+                value="không có",
+                detail=(
+                    "Không so được với lượt trước."
+                    if not before
+                    else "Lượt vá chạy nhưng không trường nào đổi giá trị."
+                ),
+            )
+        )
+
+    outputs.append(
+        OutputRow(
+            field="repair_attempts",
+            value=str(builder.snapshot.get("repair_attempts", 0)),
+            detail="số lượt vá đã dùng; chạm trần thì hồ sơ đi tiếp với dữ liệu hiện có",
+        )
+    )
+    return ["cv"], outputs
+
+
+def _deep_review(builder: _Builder) -> tuple[list[str], list[OutputRow]]:
+    """Which criteria the second opinion moved, and the quotes behind them."""
+    after = [CriterionScore.model_validate(raw) for raw in builder.snapshot.get("criterion_scores") or []]
+    before = {
+        raw.get("criterion_id"): raw.get("score")
+        for raw in (builder.previous or {}).get("criterion_scores") or []
+    }
+
+    if not after:
+        return ["cv"], [
+            OutputRow(
+                field="criterion_scores",
+                value="chưa có",
+                detail="Node chưa chấm lại tiêu chí nào trong bước này.",
+            )
+        ]
+
+    outputs: list[OutputRow] = []
+    for score in after:
+        old = before.get(score.criterion_id)
+        changed = old is not None and abs(old - score.score) > 1e-9
+        mark_ids = []
+        # Only a criterion whose score moved earns marks: marking the untouched
+        # ones would bury the handful this node actually revisited.
+        if changed:
+            mark_ids = [
+                mark_id
+                for evidence in score.evidence
+                if (
+                    mark_id := builder.add_mark(
+                        "cv",
+                        evidence.start,
+                        evidence.end,
+                        score.criterion_id,
+                        "criterion_evidence",
+                        evidence.score,
+                    )
+                )
+            ]
+        outputs.append(
+            OutputRow(
+                field=score.criterion_id,
+                value=(
+                    f"{old:.2f} → {score.score:.2f}" if changed else f"{score.score:.2f}"
+                ),
+                mark_ids=mark_ids,
+                detail=score.reasoning or ("giữ nguyên sau khi chấm lại" if not changed else None),
+            )
+        )
+    return ["cv"], outputs
+
+
 _BUILDERS: dict[str, Callable[[_Builder], tuple[list[str], list[OutputRow]]]] = {
     "ingest": _ingest,
     "guard": _guard,
@@ -511,6 +691,9 @@ _BUILDERS: dict[str, Callable[[_Builder], tuple[list[str], list[OutputRow]]]] = 
     "load_rubric": _load_rubric,
     "must_have_check": _must_have_check,
     "reject_fast": _reject_fast,
+    "quarantine": _quarantine,
+    "repair": _repair,
+    "deep_review": _deep_review,
 }
 
 
@@ -534,7 +717,8 @@ def build_slides(
         )
         caption = f"{node} → {next_node or _END_CAPTION}"
 
-        builder = _Builder(cv_text, jd_text, snapshot)
+        previous = snapshots[index - 1] if index > 0 else None
+        builder = _Builder(cv_text, jd_text, snapshot, previous)
         make = _BUILDERS.get(node)
         documents, outputs = make(builder) if make else ([], [])
 
