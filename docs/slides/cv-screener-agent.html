@@ -334,7 +334,7 @@ table.swiss.lg td{font-size:26px; padding:18px 12px; line-height:1.36;}
 }
 .warn-line em{font-style:normal; color:#ff7a55;}
 
-/* Thẻ "phản biện — câu trả lời" (slide 8).
+/* Thẻ "phản biện — câu trả lời" (slide 9).
    Giữ nguyên con số bất lợi ở dòng .obj, rồi trả lời nó ngay bên dưới. */
 .ans{
     background:var(--panel); border-left:8px solid var(--red);
@@ -566,17 +566,77 @@ body.editing [contenteditable="true"]{outline:2px dashed var(--red); outline-off
     </div>
 
     <div class="slide-foot">
-        <div class="pageno">01<span> / 12</span></div>
+        <div class="pageno">01<span> / 13</span></div>
     </div>
 
     <div class="notes">
-        <p>Dòng số liệu dưới tiêu đề là mỏ neo của cả bài: mọi con số xuất hiện sau đó đều quay lại được một trong ba mục này. Bài nói 20–25 phút, chia ba phần: vì sao bài toán này bị luật xếp vào nhóm nguy cơ cao (slide 2–3), hệ thống đã dựng (slide 4–7), và hệ thống sai ở đâu (slide 8–11).</p>
-        <p><b>Phản biện dễ nhất:</b> "0.486 là thấp." Đúng, và đó là con số tôi sẽ tự đưa lên slide 8 trước khi ai kịp hỏi — đối chứng là cả ba baseline đều 0.000, vì một lần gọi LLM không sinh ra câu trích dẫn nào để mà chỉ vào.</p>
+        <p>Dòng số liệu dưới tiêu đề là mỏ neo của cả bài: mọi con số xuất hiện sau đó đều quay lại được một trong ba mục này. Bài nói 20–25 phút, chia ba phần: vì sao bài toán này bị luật xếp vào nhóm nguy cơ cao (slide 3–4), hệ thống đã dựng (slide 5–8), và hệ thống sai ở đâu (slide 9–12).</p>
+        <p><b>Phản biện dễ nhất:</b> "0.486 là thấp." Đúng, và đó là con số tôi sẽ tự đưa lên slide 9 trước khi ai kịp hỏi — đối chứng là cả ba baseline đều 0.000, vì một lần gọi LLM không sinh ra câu trích dẫn nào để mà chỉ vào.</p>
     </div>
 </section>
 
 <!-- ======================================================================
-     SLIDE 2 — BỐI CẢNH 1/3: LUẬT
+     SLIDE 2 — MỤC LỤC
+     ====================================================================== -->
+<section class="slide" aria-label="Mục lục">
+    <div class="slide-head">
+        <div class="kicker"><span class="bar"></span>Mục lục</div>
+        <h2 class="vn">Bốn phần, và thứ tự chúng trả lời nhau</h2>
+        <div class="en">Outline</div>
+        <div class="head-rule"></div>
+    </div>
+
+    <div class="slide-body">
+        <div class="case reveal">
+            <span class="n">1</span>
+            <div>
+                <div class="t">Mở đầu — vì sao bài toán này cần một agent</div>
+                <div class="b">slide 3–4 <i>· luật đã xếp việc này vào nhóm nguy cơ cao, và ý tưởng tách bước</i></div>
+            </div>
+        </div>
+
+        <div class="case reveal">
+            <span class="n">2</span>
+            <div>
+                <div class="t">Phương pháp — hệ thống đã dựng</div>
+                <div class="b">slide 5–8 <i>· graph thật, ba khối logic, năm tool tất định, chạy thử một hồ sơ</i></div>
+            </div>
+        </div>
+
+        <div class="case reveal">
+            <span class="n">3</span>
+            <div>
+                <div class="t">Kết quả — đo được gì, và hỏng ở đâu</div>
+                <div class="b">slide 9–11 <i>· so với ba baseline, chỗ thứ tự bị đảo, lưu lượng từng nhánh</i></div>
+            </div>
+        </div>
+
+        <div class="case reveal" style="border-bottom:0;">
+            <span class="n">4</span>
+            <div>
+                <div class="t">Kết luận — mang về được gì</div>
+                <div class="b">slide 12 <i>· bốn điều dùng lại được cho một agent bất kỳ</i></div>
+            </div>
+        </div>
+
+        <div class="state-line reveal" style="margin-top:34px;">
+            Bốn phần này chạy suốt ở <em>chân mỗi slide</em> — phần đang nói được tô đỏ, nên người nghe luôn biết mình đang ở đâu.
+        </div>
+    </div>
+
+    <div class="slide-foot">
+        <div class="pageno">02<span> / 13</span></div>
+    </div>
+
+    <div class="notes">
+        <p>Dừng ở đây khoảng 20 giây. Nói rõ một câu về thứ tự: phần 1 đặt ra yêu cầu, phần 2 là thứ đã dựng để đáp yêu cầu đó, phần 3 đo xem nó có đáp được không, phần 4 rút ra cái dùng lại được. Không đọc lại cả bốn dòng — người nghe đọc nhanh hơn mình nói.</p>
+    </div>
+</section>
+
+
+
+<!-- ======================================================================
+     SLIDE 3 — BỐI CẢNH 1/3: LUẬT
      ====================================================================== -->
 <section class="slide" aria-label="Bối cảnh 1/3 — quy định">
     <div class="slide-head">
@@ -612,7 +672,7 @@ body.editing [contenteditable="true"]{outline:2px dashed var(--red); outline-off
     </div>
 
     <div class="slide-foot">
-        <div class="pageno">02<span> / 12</span></div>
+        <div class="pageno">03<span> / 13</span></div>
         <ol class="outline"><li class="on">Mở đầu</li><li>Phương pháp</li><li>Kết quả</li><li>Kết luận</li></ol>
     </div>
 
@@ -624,7 +684,7 @@ body.editing [contenteditable="true"]{outline:2px dashed var(--red); outline-off
 </section>
 
 <!-- ======================================================================
-     SLIDE 3 — Ý TƯỞNG: TỪ YÊU CẦU BẮT BUỘC ĐẾN MỘT AGENT
+     SLIDE 4 — Ý TƯỞNG: TỪ YÊU CẦU BẮT BUỘC ĐẾN MỘT AGENT
      ====================================================================== -->
 <section class="slide" aria-label="Ý tưởng — từ yêu cầu bắt buộc đến một agent">
     <div class="slide-head">
@@ -690,7 +750,7 @@ body.editing [contenteditable="true"]{outline:2px dashed var(--red); outline-off
                 <text x="248" y="330" font-family="'Nunito',sans-serif" font-size="19" fill="#0d0d0d">mỗi bước ghi lại: vào gì · ra gì · rẽ theo nhánh nào</text>
                 <text x="0" y="364" font-family="'Nunito',sans-serif" font-size="19" fill="#6e6e6a">Giải trình được là hệ quả của việc tách bước, không phải của việc chọn model tốt hơn.</text>
             </svg>
-            <figcaption>Ý tưởng ở mức khái niệm — kiến trúc thật ở slide 4</figcaption>
+            <figcaption>Ý tưởng ở mức khái niệm — kiến trúc thật ở slide 5</figcaption>
         </figure>
 
         <div class="row reveal" style="margin-top:22px; gap:34px;">
@@ -712,20 +772,20 @@ body.editing [contenteditable="true"]{outline:2px dashed var(--red); outline-off
     </div>
 
     <div class="slide-foot">
-        <div class="pageno">03<span> / 12</span></div>
+        <div class="pageno">04<span> / 13</span></div>
         <ol class="outline"><li class="on">Mở đầu</li><li>Phương pháp</li><li>Kết quả</li><li>Kết luận</li></ol>
     </div>
 
     <div class="notes">
-        <p>Đây là bản lề giữa bối cảnh và hệ thống: tôi <b>chưa</b> nói kiến trúc, chỉ nói ý tưởng rút ra từ slide 2. Nếu luật đòi nhật ký, giải trình và giám sát, thì một lần gọi LLM không đáp ứng được — không phải vì model yếu, mà vì <b>không có bước nào để mà ghi lại</b>. Giải trình được là hệ quả của việc tách bước.</p>
-        <p>“bước 1, 2, 3, n” ở đây cố ý để trống tên. Tên thật, số lượng thật và lưu lượng thật của từng nhánh nằm ở slide 4 — và tôi sẽ đo từng nhánh một, chứ không vẽ cho đẹp.</p>
-        <p><b>Phản biện dễ nhất:</b> “Tách bước thì tốn token hơn, được gì?” Đó đúng là câu hỏi E2 đặt ra, và tôi trả lời bằng số ở slide 8: hơn baseline mạnh nhất +0.04 macro-F1 với 2,5 lần token — tức là <b>không</b> thắng ở độ chính xác. Phần thắng nằm ở cột evidence coverage: 0.439 so với 0.000.</p>
-        <p>Nếu được hỏi vì sao không còn slide “bốn điểm nghẽn”: các ràng buộc kỹ thuật của dữ liệu thật (văn bản CV dính chữ, khoảng thời gian chồng lấn) được nói đúng chỗ hơn ở slide 6, nơi đã có tên tool để gắn vào.</p>
+        <p>Đây là bản lề giữa bối cảnh và hệ thống: tôi <b>chưa</b> nói kiến trúc, chỉ nói ý tưởng rút ra từ slide 3. Nếu luật đòi nhật ký, giải trình và giám sát, thì một lần gọi LLM không đáp ứng được — không phải vì model yếu, mà vì <b>không có bước nào để mà ghi lại</b>. Giải trình được là hệ quả của việc tách bước.</p>
+        <p>“bước 1, 2, 3, n” ở đây cố ý để trống tên. Tên thật, số lượng thật và lưu lượng thật của từng nhánh nằm ở slide 5 — và tôi sẽ đo từng nhánh một, chứ không vẽ cho đẹp.</p>
+        <p><b>Phản biện dễ nhất:</b> “Tách bước thì tốn token hơn, được gì?” Đó đúng là câu hỏi E2 đặt ra, và tôi trả lời bằng số ở slide 9: hơn baseline mạnh nhất +0.04 macro-F1 với 2,5 lần token — tức là <b>không</b> thắng ở độ chính xác. Phần thắng nằm ở cột evidence coverage: 0.439 so với 0.000.</p>
+        <p>Nếu được hỏi vì sao không còn slide “bốn điểm nghẽn”: các ràng buộc kỹ thuật của dữ liệu thật (văn bản CV dính chữ, khoảng thời gian chồng lấn) được nói đúng chỗ hơn ở slide 7, nơi đã có tên tool để gắn vào.</p>
     </div>
 </section>
 
 <!-- ======================================================================
-     SLIDE 4 — KIẾN TRÚC: GRAPH THẬT (nằm ngang, không số đo)
+     SLIDE 5 — KIẾN TRÚC: GRAPH THẬT (nằm ngang, không số đo)
      ====================================================================== -->
 <section class="slide" aria-label="Kiến trúc — state graph">
     <div class="slide-head">
@@ -852,19 +912,19 @@ body.editing [contenteditable="true"]{outline:2px dashed var(--red); outline-off
     </div>
 
     <div class="slide-foot">
-        <div class="pageno">04<span> / 12</span></div>
+        <div class="pageno">05<span> / 13</span></div>
         <ol class="outline"><li>Mở đầu</li><li class="on">Phương pháp</li><li>Kết quả</li><li>Kết luận</li></ol>
     </div>
 
     <div class="notes">
         <p>13 node, không phải 12 — đọc thẳng từ <code>docs/diagrams/graph.mmd</code>, sinh tự động từ chính graph. Bốn conditional edge nằm gọn trong <code>src/graph/routes.py</code>: mỗi hàm là một pure function của state, không gọi tool và không gọi model.</p>
         <p>Chú ý một chỗ dễ vẽ sai: <code>deep_review</code> <b>không</b> đi thẳng tới <code>rank</code> — nó quay về <code>decide</code>, rồi <code>decide → rank</code>. Đúng như <code>graph.mmd</code>.</p>
-        <p>Slide này cố tình <b>không có số</b>: nó trả lời câu "hệ thống gồm những gì". Câu "nhánh nào thật sự có lưu lượng" là một câu khác, và tôi trả lời bằng số đo ở slide 10 — bốn conditional edge, bốn con số đo trên <code>test_500</code>. Nguyên tắc mang về được: <b>nhánh không có số đo là nhánh trang trí</b> (spec §4).</p>
+        <p>Slide này cố tình <b>không có số</b>: nó trả lời câu "hệ thống gồm những gì". Câu "nhánh nào thật sự có lưu lượng" là một câu khác, và tôi trả lời bằng số đo ở slide 11 — bốn conditional edge, bốn con số đo trên <code>test_500</code>. Nguyên tắc mang về được: <b>nhánh không có số đo là nhánh trang trí</b> (spec §4).</p>
         <p>Ngưỡng <code>max_repair_attempts = 2</code>: đo trên dữ liệu thật thì vòng thứ hai chưa bao giờ phải chạy — 12/12 hồ sơ cần repair được sửa ngay vòng đầu (<code>src/graph/routes.py</code>).</p>
     </div>
 </section>
 <!-- ======================================================================
-     SLIDE 5 — KIẾN TRÚC: BA KHỐI LOGIC
+     SLIDE 6 — KIẾN TRÚC: BA KHỐI LOGIC
      ====================================================================== -->
 <section class="slide" aria-label="Kiến trúc — ba khối logic">
     <div class="slide-head">
@@ -947,7 +1007,7 @@ body.editing [contenteditable="true"]{outline:2px dashed var(--red); outline-off
                     <text class="svg-lab" x="1100" y="292" font-size="18">= <tspan font-weight="700" fill="#0d0d0d">vùng xám</tspan> &#8594; chấm lại một lượt ở <tspan font-family="'IBM Plex Mono',monospace">deep_review</tspan></text>
                 </g>
             </svg>
-            <figcaption>Cùng 13 node của slide 4, nhóm lại theo trách nhiệm</figcaption>
+            <figcaption>Cùng 13 node của slide 5, nhóm lại theo trách nhiệm</figcaption>
         </figure>
 
         <div class="row reveal" style="margin-top:18px; gap:30px;">
@@ -962,19 +1022,19 @@ body.editing [contenteditable="true"]{outline:2px dashed var(--red); outline-off
 
 
     <div class="slide-foot">
-        <div class="pageno">05<span> / 12</span></div>
+        <div class="pageno">06<span> / 13</span></div>
         <ol class="outline"><li>Mở đầu</li><li class="on">Phương pháp</li><li>Kết quả</li><li>Kết luận</li></ol>
     </div>
 
     <div class="notes">
-        <p>Ba tầng là cách đọc, không phải cấu trúc thứ hai trong code: vẫn đúng 13 node của slide 4.</p>
+        <p>Ba tầng là cách đọc, không phải cấu trúc thứ hai trong code: vẫn đúng 13 node của slide 5.</p>
         <p>Rubric là quyết định thiết kế đáng nói nhất ở đây: JD được chuyển thành dữ liệu YAML có trọng số, cờ <code>must_have</code> và hai ngưỡng cắt (spec §6). HR sửa được mà hệ thống vẫn tái lập được; nhét JD vào prompt thì mỗi lần sửa là một hệ thống khác.</p>
-        <p><b>Phản biện dễ nhất:</b> "<code>reject_fast</code> chẳng phải là loại ứng viên sao?" Không: theo spec §2 nó gán nhãn <code>No Fit</code> nhưng <b>vẫn chấm mọi tiêu chí khác</b> để giao diện giải thích được — đó là chỗ Article 14 sống được. Cái giá của cổng này tôi đo và đưa lên slide 10.</p>
+        <p><b>Phản biện dễ nhất:</b> "<code>reject_fast</code> chẳng phải là loại ứng viên sao?" Không: theo spec §2 nó gán nhãn <code>No Fit</code> nhưng <b>vẫn chấm mọi tiêu chí khác</b> để giao diện giải thích được — đó là chỗ Article 14 sống được. Cái giá của cổng này tôi đo và đưa lên slide 11.</p>
     </div>
 </section>
 
 <!-- ======================================================================
-     SLIDE 6 — NĂM TOOL TẤT ĐỊNH
+     SLIDE 7 — NĂM TOOL TẤT ĐỊNH
      ====================================================================== -->
 <section class="slide" aria-label="Năm tool tất định">
     <div class="slide-head">
@@ -1028,7 +1088,7 @@ body.editing [contenteditable="true"]{outline:2px dashed var(--red); outline-off
     </div>
 
     <div class="slide-foot">
-        <div class="pageno">06<span> / 12</span></div>
+        <div class="pageno">07<span> / 13</span></div>
         <ol class="outline"><li>Mở đầu</li><li class="on">Phương pháp</li><li>Kết quả</li><li>Kết luận</li></ol>
     </div>
 
@@ -1041,7 +1101,7 @@ body.editing [contenteditable="true"]{outline:2px dashed var(--red); outline-off
     </div>
 </section>
 <!-- ======================================================================
-     SLIDE 7 — WALKTHROUGH MỘT HỒ SƠ
+     SLIDE 8 — WALKTHROUGH MỘT HỒ SƠ
      ====================================================================== -->
 <section class="slide" aria-label="Demo">
     <div class="word-only">
@@ -1049,7 +1109,7 @@ body.editing [contenteditable="true"]{outline:2px dashed var(--red); outline-off
     </div>
 
     <div class="slide-foot" style="border-top:none;">
-        <div class="pageno">07<span> / 12</span></div>
+        <div class="pageno">08<span> / 13</span></div>
         <ol class="outline"><li>Mở đầu</li><li class="on">Phương pháp</li><li>Kết quả</li><li>Kết luận</li></ol>
     </div>
 
@@ -1057,14 +1117,14 @@ body.editing [contenteditable="true"]{outline:2px dashed var(--red); outline-off
         <p><b>Chạy demo:</b> <code>python -m app.server</code> → <code>http://localhost:8000</code>. Mở sẵn trước khi lên nói, chọn preset ở khung “Dữ liệu đầu vào”. Mỗi ca mất vài chục giây vì nó gọi model thật.</p>
         <p><b>Thứ tự nên diễn:</b> ca 2 trước (nhanh nhất, thấy ngay nhánh tắt), rồi ca 3 (bật / tắt guard để so), rồi ca 4 nếu còn thời gian. Ca 1 chỉ cần nói miệng — nó không rẽ đi đâu cả.</p>
         <p><b>Điểm chính cần chỉ ra khi stepper chạy:</b> cái đang sáng lên không phải một hiệu ứng trình diễn. <code>predict_next_node</code> gọi thẳng bốn hàm routing trong <code>src/graph/routes.py</code> qua một bảng tra, còn các cạnh vô điều kiện thì soi theo <code>build_graph</code>. Bản đầu tiên <i>chép lại</i> luật rẽ và đã lệch khỏi graph ở ba chỗ; bảy test hiện ghim từng nhánh, ba trong số đó trượt với bản chép. Nói chuyện này ra — nó là lý do preview đáng tin.</p>
-        <p><b>Phản biện dễ nhất — tự nêu trước:</b> “Bốn ca này do anh tự viết, tất nhiên nó chạy đúng.” Đúng. Bốn ca là CV/JD tự soạn trong <code>app/demo_cases.py</code>, chọn riêng để mỗi ca bật đúng một nhánh — chúng chứng minh <b>cơ chế chạy đúng như mô tả</b>, không chứng minh gì về độ chính xác. Độ chính xác nằm ở slide 8–10, đo trên 300 và 500 hàng không phải do tôi soạn.</p>
+        <p><b>Phản biện dễ nhất — tự nêu trước:</b> “Bốn ca này do anh tự viết, tất nhiên nó chạy đúng.” Đúng. Bốn ca là CV/JD tự soạn trong <code>app/demo_cases.py</code>, chọn riêng để mỗi ca bật đúng một nhánh — chúng chứng minh <b>cơ chế chạy đúng như mô tả</b>, không chứng minh gì về độ chính xác. Độ chính xác nằm ở slide 9–11, đo trên 300 và 500 hàng không phải do tôi soạn.</p>
         <p><b>Cũng nói thẳng:</b> trên 300 CV thật của <code>dev_300</code>, <b>0</b> hồ sơ kích hoạt rule nào của guard. Ca 3 là CV tự soạn có chỉ thị ẩn. Giá trị của guard là <i>từ chối xử lý</i> một tài liệu đang cố can thiệp, không phải ngăn một can thiệp lẽ ra đã thành công.</p>
         <p><b>Nếu demo chết:</b> chuyển sang khối dự phòng bên phải và kể hàng #146 — CV đó ghi ngày kiểu <code>01/1-01/1</code> nên <code>extract</code> trả về 8 trường ngày hỏng, <code>repair</code> vá hết trong một vòng, điểm cộng lại rơi vào vùng xám nên bị chấm lại, và nhãn cuối trùng nhãn thật của dataset. Toàn bộ replay từ <code>data/cache/llm_cache.jsonl</code>, không gọi API lần nào.</p>
     </div>
 </section>
 
 <!-- ======================================================================
-     SLIDE 8 — BENCHMARK
+     SLIDE 9 — BENCHMARK
      ====================================================================== -->
 <section class="slide" aria-label="Benchmark agent so với ba baseline">
     <div class="slide-head">
@@ -1105,7 +1165,7 @@ body.editing [contenteditable="true"]{outline:2px dashed var(--red); outline-off
 
                 <div class="callout reveal" style="font-size:22px; padding:22px 26px;">
                     <span class="lbl">Trần của bài toán, không phải của hệ này</span>
-                    AUC Good Fit / Potential Fit: agent <b>0.482</b> &#183; classifier <b>có giám sát</b>, xem nhãn agent chưa từng thấy, chỉ đạt <b>0.577</b>. Cả hai sát mức đoán ngẫu nhiên (0.5) — chi tiết ở slide 9.
+                    AUC Good Fit / Potential Fit: agent <b>0.482</b> &#183; classifier <b>có giám sát</b>, xem nhãn agent chưa từng thấy, chỉ đạt <b>0.577</b>. Cả hai sát mức đoán ngẫu nhiên (0.5) — chi tiết ở slide 10.
                 </div>
             </div>
 
@@ -1127,7 +1187,7 @@ body.editing [contenteditable="true"]{outline:2px dashed var(--red); outline-off
                 <div class="ans reveal" style="padding:18px 24px 20px;">
                     <div class="obj" style="font-size:17px;"><b>Phản biện</b>&#8220;Agent cũng loại oan: 73 / 130 hàng nhãn thật Good Fit bị trả về No Fit.&#8221;</div>
                     <div class="ttl" style="font-size:25px;">Loại oan ở đây đo được, tách được, và tắt được</div>
-                    <div class="ev" style="font-size:20px;">73 = <b>28</b> do cổng <code class="mono">must_have</code> + <b>45</b> do tầng chấm điểm — phân rã đầy đủ ở slide 10.</div>
+                    <div class="ev" style="font-size:20px;">73 = <b>28</b> do cổng <code class="mono">must_have</code> + <b>45</b> do tầng chấm điểm — phân rã đầy đủ ở slide 11.</div>
                 </div>
 
             </div>
@@ -1135,22 +1195,22 @@ body.editing [contenteditable="true"]{outline:2px dashed var(--red); outline-off
     </div>
 
     <div class="slide-foot">
-        <div class="pageno">08<span> / 12</span></div>
+        <div class="pageno">09<span> / 13</span></div>
         <ol class="outline"><li>Mở đầu</li><li>Phương pháp</li><li class="on">Kết quả</li><li>Kết luận</li></ol>
     </div>
 
     <div class="notes">
         <p><b>Chiến lược mở đầu:</b> callout trần bài toán (trên, cạnh bảng) đọc trước tiên — AUC agent 0.482, classifier có giám sát cũng chỉ 0.577, cả hai sát ngẫu nhiên — để khán giả không kỳ vọng sai trước khi nhìn macro-F1. Sau đó đọc bảng trái sang phải: Good Fit recall (TF-IDF nổi lên trước) &#8594; No Fit F1 (giải thích ngay tại sao TF-IDF cao recall) &#8594; macro-F1/Tokens/Evidence (điểm tổng và cái baseline không có).</p>
         <p><b>Cách trình bày ba thẻ phản biện:</b> đọc to cả ba dòng phản biện trước, rồi mới trả lời. Ba con số bất lợi đó do tôi đo và tôi nêu — không phải chỗ tôi quên nói.</p>
-        <p><b>Thẻ 1 (TF-IDF).</b> Recall 0.419 của TF-IDF là thật, và Good Fit F1 của nó (0.356) cũng cao hơn agent (0.236) — nói rõ điểm này. Nhưng nó mua recall bằng cách đẩy hàng ra khỏi No Fit, nên No Fit F1 tụt còn 0.494 và macro-F1 tổng là thấp nhất trong bốn hệ — cột No Fit F1 trên bảng giờ cho thấy trade-off này trực tiếp, không cần đợi câu trả lời. Chốt bằng trần: trên 149 hàng mang một trong hai nhãn, AUC của agent là 0.482 với khoảng bootstrap [0.386, 0.575]; một classifier có giám sát, cross-validate theo JD, được xem nhãn mà agent không bao giờ thấy, chỉ đạt 0.577. Đó là trần của <i>bài toán</i>, không phải của hệ này. <b>Nếu bị đánh ngược:</b> &#8220;vậy cả hai đều vô dụng&#8221; — đúng với riêng cặp Good/Potential, và đó chính là nội dung slide 9.</p>
-        <p><b>Thẻ 2 (macro-F1/token).</b> Spec &#167;7 dự trù đúng tình huống baseline rubric-in-prompt sát agent: khi đó giá trị của agent phải nằm ở truy vết bằng chứng, xử lý CV lỗi, chặn can thiệp và chi phí. 0.439 so với 0.000 không phải một khoảng cách hơn kém — ba baseline <i>chưa bao giờ sinh ra</i> một trích dẫn để mà đo. Nếu bị hỏi &#8220;+0.04 với 2,5 lần token thì đáng không?&#8221; — tính thuần theo macro-F1 thì <b>không</b>, và đó là lý do E2 chỉ được tuyên là đạt một phần ở slide cuối. Câu trả lời không phải &#8220;đáng vì F1&#8221; mà là: một nhãn không kèm bằng chứng thì không triển khai được cho nhóm nguy cơ cao ở slide 2, nên nó không phải một lựa chọn rẻ hơn.</p>
-        <p><b>Thẻ 3 (loại oan).</b> Phân rã 73 hàng: <code>test_shipped.md</code> ghi cổng <code>must_have</code> chặn 121 hàng trước khi chấm, trong đó 28 hàng mang nhãn thật Good Fit; <code>reject_fast</code> luôn trả No Fit, nên 28 trong 73 là do cổng, 45 còn lại là do tầng chấm điểm. Tiêu chí chặn nhiều nhất là <code>experience_years</code> (48 / 121 hàng) — nối thẳng về ca demo số 2 ở slide 7, và về hàng #146 nơi CV ghi ngày kiểu <code>01/1-01/1</code>. <b>Hai số này ở hai tập khác nhau:</b> 28/45 đo trên test_500, còn +0.033 khi tắt cổng đo trên dev_300 (<code>must_have_gate.md</code>: 0.3721 &#8594; 0.4052, 33/300 dự đoán đổi, +208k token). Đừng gộp chúng thành một câu.</p>
+        <p><b>Thẻ 1 (TF-IDF).</b> Recall 0.419 của TF-IDF là thật, và Good Fit F1 của nó (0.356) cũng cao hơn agent (0.236) — nói rõ điểm này. Nhưng nó mua recall bằng cách đẩy hàng ra khỏi No Fit, nên No Fit F1 tụt còn 0.494 và macro-F1 tổng là thấp nhất trong bốn hệ — cột No Fit F1 trên bảng giờ cho thấy trade-off này trực tiếp, không cần đợi câu trả lời. Chốt bằng trần: trên 149 hàng mang một trong hai nhãn, AUC của agent là 0.482 với khoảng bootstrap [0.386, 0.575]; một classifier có giám sát, cross-validate theo JD, được xem nhãn mà agent không bao giờ thấy, chỉ đạt 0.577. Đó là trần của <i>bài toán</i>, không phải của hệ này. <b>Nếu bị đánh ngược:</b> &#8220;vậy cả hai đều vô dụng&#8221; — đúng với riêng cặp Good/Potential, và đó chính là nội dung slide 10.</p>
+        <p><b>Thẻ 2 (macro-F1/token).</b> Spec &#167;7 dự trù đúng tình huống baseline rubric-in-prompt sát agent: khi đó giá trị của agent phải nằm ở truy vết bằng chứng, xử lý CV lỗi, chặn can thiệp và chi phí. 0.439 so với 0.000 không phải một khoảng cách hơn kém — ba baseline <i>chưa bao giờ sinh ra</i> một trích dẫn để mà đo. Nếu bị hỏi &#8220;+0.04 với 2,5 lần token thì đáng không?&#8221; — tính thuần theo macro-F1 thì <b>không</b>, và đó là lý do E2 chỉ được tuyên là đạt một phần ở slide cuối. Câu trả lời không phải &#8220;đáng vì F1&#8221; mà là: một nhãn không kèm bằng chứng thì không triển khai được cho nhóm nguy cơ cao ở slide 3, nên nó không phải một lựa chọn rẻ hơn.</p>
+        <p><b>Thẻ 3 (loại oan).</b> Phân rã 73 hàng: <code>test_shipped.md</code> ghi cổng <code>must_have</code> chặn 121 hàng trước khi chấm, trong đó 28 hàng mang nhãn thật Good Fit; <code>reject_fast</code> luôn trả No Fit, nên 28 trong 73 là do cổng, 45 còn lại là do tầng chấm điểm. Tiêu chí chặn nhiều nhất là <code>experience_years</code> (48 / 121 hàng) — nối thẳng về ca demo số 2 ở slide 8, và về hàng #146 nơi CV ghi ngày kiểu <code>01/1-01/1</code>. <b>Hai số này ở hai tập khác nhau:</b> 28/45 đo trên test_500, còn +0.033 khi tắt cổng đo trên dev_300 (<code>must_have_gate.md</code>: 0.3721 &#8594; 0.4052, 33/300 dự đoán đổi, +208k token). Đừng gộp chúng thành một câu.</p>
         <p><b>Khác biệt thật, nói thẳng:</b> một hệ sàng lọc thông thường cũng loại oan, nhưng không biết mình loại oan bao nhiêu, không tách được lỗi thuộc về khâu nào, và không có công tắc nào để tắt khâu đó đi rồi đo lại.</p>
     </div>
 </section>
 
 <!-- ======================================================================
-     SLIDE 9 — ORDERING
+     SLIDE 10 — ORDERING
      ====================================================================== -->
 <section class="slide" aria-label="Ordering — chỗ hệ thống thật sự hỏng">
     <div class="slide-head">
@@ -1236,7 +1296,7 @@ body.editing [contenteditable="true"]{outline:2px dashed var(--red); outline-off
     </div>
 
     <div class="slide-foot">
-        <div class="pageno">09<span> / 12</span></div>
+        <div class="pageno">10<span> / 13</span></div>
         <ol class="outline"><li>Mở đầu</li><li>Phương pháp</li><li class="on">Kết quả</li><li>Kết luận</li></ol>
     </div>
 
@@ -1247,7 +1307,7 @@ body.editing [contenteditable="true"]{outline:2px dashed var(--red); outline-off
     </div>
 </section>
 <!-- ======================================================================
-     SLIDE 10 — LƯU LƯỢNG NHÁNH & ĐÓNG GÓP TỪNG MODULE
+     SLIDE 11 — LƯU LƯỢNG NHÁNH & ĐÓNG GÓP TỪNG MODULE
      ====================================================================== -->
 <section class="slide" aria-label="Lưu lượng nhánh và đóng góp từng module">
     <div class="slide-head">
@@ -1315,7 +1375,7 @@ body.editing [contenteditable="true"]{outline:2px dashed var(--red); outline-off
     </div>
 
     <div class="slide-foot">
-        <div class="pageno">10<span> / 12</span></div>
+        <div class="pageno">11<span> / 13</span></div>
         <ol class="outline"><li>Mở đầu</li><li>Phương pháp</li><li class="on">Kết quả</li><li>Kết luận</li></ol>
     </div>
 
@@ -1323,12 +1383,12 @@ body.editing [contenteditable="true"]{outline:2px dashed var(--red); outline-off
         <p>Ba ablation, ba cách đọc khác nhau, và không cái nào được gộp thành một con số "đóng góp của agent". Cổng <code>must_have</code> là cái đắt nhất: <b>0.3721</b> (bật) vs <b>0.4052</b> (tắt) — nó <b>làm giảm</b> macro-F1 0.0331 để đổi lấy 208.127 token; trên <code>test_500</code> nó loại 121 hàng với precision 0.645, trong đó 28 hàng thật là Good Fit. <code>no_gray_zone</code>: 0.4155 (agent) vs 0.4014 (tắt <code>deep_review</code>).</p>
         <p><b>Phản biện dễ nhất:</b> "Vậy tắt cổng đi cho xong?" Đó chính là lựa chọn mà số đo mở ra — nhưng tắt cổng là trả thêm khoảng 20% token mỗi lần chạy. Điều chúng tôi khẳng định không phải cổng đúng hay sai, mà là <b>cái giá của nó đã được đo</b>, nên đây là một lựa chọn chứ không phải một mặc định.</p>
         <p>Về guard: tôi <b>không</b> tuyên bố guard chặn được tấn công. Sáu hàng bị đầu độc chấm đúng 0.550 — y hệt hàng sạch — kể cả khi tắt guard. Giá trị của guard là từ chối xử lý một tài liệu đang cố can thiệp, không phải ngăn một can thiệp lẽ ra sẽ thành công. Và các hàng đó là fixture tổng hợp, vì 0/300 CV thật kích hoạt rule nào.</p>
-        <p>Cho đủ: cổng <code>must_have</code> giải thích 28 trong 73 hàng Good Fit bị trả về No Fit trên <code>test_500</code>; phần còn lại nằm ở tầng chấm điểm, tức slide 9.</p>
+        <p>Cho đủ: cổng <code>must_have</code> giải thích 28 trong 73 hàng Good Fit bị trả về No Fit trên <code>test_500</code>; phần còn lại nằm ở tầng chấm điểm, tức slide 10.</p>
     </div>
 </section>
 
 <!-- ======================================================================
-     SLIDE 11 — KẾT LUẬN, BÀI HỌC & QA
+     SLIDE 12 — KẾT LUẬN, BÀI HỌC & QA
      ====================================================================== -->
 <section class="slide" aria-label="Kết luận, bài học nghiên cứu và QA">
     <div class="slide-head">
@@ -1381,22 +1441,22 @@ body.editing [contenteditable="true"]{outline:2px dashed var(--red); outline-off
     </div>
 
     <div class="slide-foot">
-        <div class="pageno">11<span> / 12</span></div>
+        <div class="pageno">12<span> / 13</span></div>
         <ol class="outline"><li>Mở đầu</li><li>Phương pháp</li><li>Kết quả</li><li class="on">Kết luận</li></ol>
     </div>
 
     <div class="notes">
         <p><b>Slide này cố tình không có con số.</b> Bốn điều trên là thứ người nghe mang về được kể cả khi họ không làm sàng lọc CV. Số liệu nằm ở đây, chỉ lấy ra khi bị hỏi.</p>
-        <p><b>Nếu bị hỏi "vậy rốt cuộc nó có tốt hơn không":</b> E1 đạt — evidence coverage 0.486 so với 0.000 của cả ba baseline. E2 chỉ đạt một phần — hơn baseline mạnh nhất +0.04 macro-F1 nhưng tốn 2,5 lần token, tức là <b>không</b> thắng ở độ chính xác. Phần thắng nằm ở truy vết, đúng như slide 8 đã nói.</p>
-        <p><b>Nếu bị hỏi về ba điều luật đòi ở slide 2:</b> Article 12 — log từng node, cache JSONL, chạy lại ra y hệt. Article 13 — scorecard có trích dẫn truy về offset ký tự trong CV gốc. Article 14 — các công tắc ablation là chỗ người giám sát can thiệp được. Chưa làm conformity assessment; đây là demo nghiên cứu, không phải tuyên bố tuân thủ.</p>
-        <p>Nếu được hỏi thêm, dùng lại các số đã nêu ở slide trước: 4 conditional edge đều có lưu lượng thật đo trên test_500 (slide 10) — không nhánh nào tồn tại chỉ để trông có vẻ agentic. Prompt rubric đầu tiên sập về <code>No Fit</code> trên 297/300 hàng, macro-F1 0.2405; nay <code>eval/report.py</code> tự cảnh báo mọi run có 95% cùng một nhãn. 198/290 CV dev có khoảng thời gian chồng lấn — đó là lý do <code>calculate_experience</code> tồn tại thay vì để model tự suy luận số năm kinh nghiệm.</p>
+        <p><b>Nếu bị hỏi "vậy rốt cuộc nó có tốt hơn không":</b> E1 đạt — evidence coverage 0.486 so với 0.000 của cả ba baseline. E2 chỉ đạt một phần — hơn baseline mạnh nhất +0.04 macro-F1 nhưng tốn 2,5 lần token, tức là <b>không</b> thắng ở độ chính xác. Phần thắng nằm ở truy vết, đúng như slide 9 đã nói.</p>
+        <p><b>Nếu bị hỏi về ba điều luật đòi ở slide 3:</b> Article 12 — log từng node, cache JSONL, chạy lại ra y hệt. Article 13 — scorecard có trích dẫn truy về offset ký tự trong CV gốc. Article 14 — các công tắc ablation là chỗ người giám sát can thiệp được. Chưa làm conformity assessment; đây là demo nghiên cứu, không phải tuyên bố tuân thủ.</p>
+        <p>Nếu được hỏi thêm, dùng lại các số đã nêu ở slide trước: 4 conditional edge đều có lưu lượng thật đo trên test_500 (slide 11) — không nhánh nào tồn tại chỉ để trông có vẻ agentic. Prompt rubric đầu tiên sập về <code>No Fit</code> trên 297/300 hàng, macro-F1 0.2405; nay <code>eval/report.py</code> tự cảnh báo mọi run có 95% cùng một nhãn. 198/290 CV dev có khoảng thời gian chồng lấn — đó là lý do <code>calculate_experience</code> tồn tại thay vì để model tự suy luận số năm kinh nghiệm.</p>
         <p><b>Phản biện dễ nhất:</b> "Counterfactual trường học p = 0.024 — vậy hệ thống thiên lệch?" Chính xác là: các dịch chuyển <b>có cùng một hướng</b> trên 261 cặp (72 cặp đổi điểm, 24 đổi nhãn), đó là bằng chứng về hướng chứ không phải về độ lớn; nhánh danh tính p = 0.635 cho thấy không phải cái gì cũng lệch. Quan trọng hơn: điểm <b>dịch chuyển</b> khi lẽ ra không được dịch chuyển — đó là bất ổn, một defect riêng, độc lập với thiên lệch. Mean delta gần 0 không chứng minh công bằng.</p>
     </div>
 </section>
 
 
 <!-- ======================================================================
-     SLIDE 12 — CẢM ƠN & QA
+     SLIDE 13 — CẢM ƠN & QA
      ====================================================================== -->
 <section class="slide" aria-label="Cảm ơn và trao đổi">
     <div class="thanks">
@@ -1405,11 +1465,11 @@ body.editing [contenteditable="true"]{outline:2px dashed var(--red); outline-off
     </div>
 
     <div class="slide-foot" style="border-top:none;">
-        <div class="pageno">12<span> / 12</span></div>
+        <div class="pageno">13<span> / 13</span></div>
     </div>
 
     <div class="notes">
-        <p>Quay lại slide 9 nếu bị hỏi về chỗ hệ thống hỏng, slide 10 nếu bị hỏi về cái giá của từng cổng, slide 8 nếu bị hỏi so với baseline. Notes của ba slide đó có sẵn số bootstrap, power, ablation và counterfactual.</p>
+        <p>Quay lại slide 10 nếu bị hỏi về chỗ hệ thống hỏng, slide 11 nếu bị hỏi về cái giá của từng cổng, slide 9 nếu bị hỏi so với baseline. Notes của ba slide đó có sẵn số bootstrap, power, ablation và counterfactual.</p>
     </div>
 </section>
 
