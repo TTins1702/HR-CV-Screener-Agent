@@ -17,7 +17,7 @@
    =========================================== */
 :root{
     /* Bề mặt & mực */
-    --stage-bg:#d8d8d3;              /* vùng letterbox quanh sân khấu */
+    --stage-bg:#ffffff;              /* vùng letterbox quanh sân khấu */
     --slide-bg:#ffffff;
     --ink:#0d0d0d;
     --ink-2:#3c3c3a;
@@ -240,6 +240,17 @@ h2.vn{
 .pageno{font-family:var(--font-display); font-weight:800; font-size:26px; color:var(--ink);}
 .pageno span{color:var(--ink-3); font-weight:600; font-size:18px;}
 
+/* Slide ngắt nhịp: chỉ một chữ, căn giữa sân khấu */
+.word-only{
+    position:absolute; inset:0;
+    display:flex; align-items:center; justify-content:center;
+}
+.word-only .word{
+    font-family:var(--font-display); font-weight:800;
+    font-size:300px; line-height:1; letter-spacing:-0.03em;
+    color:var(--red); text-transform:uppercase;
+}
+
 /* ===========================================
    5. THÀNH PHẦN NỘI DUNG
    =========================================== */
@@ -282,6 +293,8 @@ table.swiss td.mono, table.swiss th.num{font-family:var(--font-mono);}
 table.swiss td.num, table.swiss th.num{text-align:right; font-family:var(--font-mono);}
 table.swiss tr.hero td{background:#fff5f2; color:var(--ink); font-weight:700;}
 table.swiss code{font-family:var(--font-mono); font-size:.94em;}
+table.swiss.lg th{font-size:19px; padding:14px 12px; white-space:nowrap;}
+table.swiss.lg td{font-size:26px; padding:18px 12px; line-height:1.36;}
 
 .callout{
     border:3px solid var(--red); padding:18px 22px;
@@ -297,7 +310,7 @@ table.swiss code{font-family:var(--font-mono); font-size:.94em;}
 }
 .warn-line em{font-style:normal; color:#ff7a55;}
 
-/* Thẻ "phản biện — câu trả lời" (slide 9).
+/* Thẻ "phản biện — câu trả lời" (slide 8).
    Giữ nguyên con số bất lợi ở dòng .obj, rồi trả lời nó ngay bên dưới. */
 .ans{
     background:var(--panel); border-left:8px solid var(--red);
@@ -350,7 +363,7 @@ figure.asset-slot figcaption{
     color:var(--red); font-weight:600;
 }
 .t-main{
-    font-family:var(--font-display); font-weight:800; font-size:150px; line-height:0.92;
+    font-family:var(--font-display); font-weight:800; font-size:132px; line-height:0.92;
     letter-spacing:-0.035em; color:var(--ink); margin-top:20px;
 }
 .t-sub{font-family:var(--font-body); font-weight:700; font-size:37px; color:var(--ink); margin-top:28px;}
@@ -367,8 +380,10 @@ figure.asset-slot figcaption{
 .t-anchor b{color:var(--red-deep);}
 .t-by{
     position:absolute; left:var(--pad-x); bottom:96px;
-    font-family:var(--font-mono); font-size:24px; color:var(--ink-2);
+    font-family:var(--font-mono); font-size:20px; color:var(--ink-2);
+    line-height:1.75;
 }
+.t-by i{font-style:normal; color:var(--ink-3);}
 .t-mark{position:absolute; right:88px; top:150px; width:230px; height:230px;}
 
 /* ===========================================
@@ -425,6 +440,10 @@ ol.lessons li b{color:var(--ink); font-weight:700;}
     line-height:1.22; color:var(--ink);}
 .case .b{font-family:var(--font-mono); font-size:19px; color:var(--red-deep); margin-top:7px;}
 .case .b i{font-style:normal; color:var(--ink-3);}
+/* Dòng diễn giải bằng font body — dùng cho bốn điều rút ra ở slide kết luận,
+   nơi câu dài nên font mono sẽ nặng và khó đọc. */
+.case .d{font-family:var(--font-body); font-size:21px; line-height:1.34;
+    color:var(--ink-2); margin-top:8px;}
 
 .watch{
     display:flex; gap:12px; align-items:flex-start;
@@ -505,28 +524,29 @@ body.editing [contenteditable="true"]{outline:2px dashed var(--red); outline-off
     </svg>
 
     <div class="block">
-        <div class="t-eyebrow reveal">Báo cáo nghiên cứu · Research report</div>
-        <h1 class="t-main reveal">AGENT:<br>CV_SCREENER_AGENT</h1>
+        <div class="t-eyebrow reveal">Seminar</div>
+        <h1 class="t-main reveal">CV SCREENER AGENT</h1>
         <p class="t-sub reveal">Sàng lọc CV có truy vết bằng chứng</p>
         <p class="t-sub-en reveal">Evidence-linked CV screening on a LangGraph state machine</p>
         <div class="t-anchor reveal">
             <div><b>13</b> node</div>
             <div><b>4</b> conditional edge</div>
             <div><b>5</b> tool tất định</div>
-            <div><b>500</b> hồ sơ · chạy MỘT lần</div>
-            <div>evidence coverage <b>0.486</b></div>
         </div>
     </div>
 
-    <div class="t-by">{{TÊN NGƯỜI TRÌNH BÀY}} · {{NGÀY}}</div>
+    <div class="t-by reveal">
+        <div>Nguyễn Tân Hoàng Minh <i>— Slides</i></div>
+        <div>Trần Trung Tín <i>— Demo</i></div>
+        <div>Mai Nhật Quang</div>
+    </div>
 
     <div class="slide-foot">
-        <div class="src">nguồn: <b>docs/measurements/test_shipped.md</b> · n=500 · <b>docs/diagrams/graph.mmd</b> · <b>docs/spec/2026-09-07-hr-cv-screener-spec.md</b> §5</div>
-        <div class="pageno">01<span> / 12</span></div>
+        <div class="pageno">01<span> / 11</span></div>
     </div>
 
     <div class="notes">
-        <p>Dòng số liệu dưới tiêu đề là mỏ neo của cả bài: mọi con số xuất hiện sau đó đều quay lại được một trong năm mục này. Bài nói 20–25 phút, chia ba phần: vì sao bài toán này bị luật xếp vào nhóm nguy cơ cao (slide 2–3), hệ thống đã dựng (slide 4–8), và hệ thống sai ở đâu (slide 9–12).</p>
+        <p>Dòng số liệu dưới tiêu đề là mỏ neo của cả bài: mọi con số xuất hiện sau đó đều quay lại được một trong ba mục này. Bài nói 20–25 phút, chia ba phần: vì sao bài toán này bị luật xếp vào nhóm nguy cơ cao (slide 2–3), hệ thống đã dựng (slide 4–7), và hệ thống sai ở đâu (slide 8–11).</p>
         <p><b>Phản biện dễ nhất:</b> "0.486 là thấp." Đúng, và đó là con số tôi sẽ tự đưa lên slide 8 trước khi ai kịp hỏi — đối chứng là cả ba baseline đều 0.000, vì một lần gọi LLM không sinh ra câu trích dẫn nào để mà chỉ vào.</p>
     </div>
 </section>
@@ -546,11 +566,11 @@ body.editing [contenteditable="true"]{outline:2px dashed var(--red); outline-off
         <div class="row">
             <div class="col" style="flex:1.12;">
                 <div class="quote-block reveal" style="font-size:30px; padding:34px 38px;">
-                    “4. Employment, workers management and access to self-employment:<br>
-                    (a) AI systems intended to be used for the recruitment or selection of natural
+                    <span style="display:block; font-family:var(--font-mono); font-size:17px; font-weight:600; letter-spacing:.04em; text-transform:uppercase; color:var(--ink-3); margin-bottom:14px;">Annex III liệt kê các hệ thống AI "high-risk". Mục 4 — Employment:</span>
+                    “(a) AI systems intended to be used for the recruitment or selection of natural
                     persons, notably to place targeted job advertisements, to analyse and filter job
                     applications, and to evaluate candidates;”
-                    <span class="cite">EU AI Act — Annex III, Point 4(a)</span>
+                    <span class="cite">EU AI Act (Regulation 2024/1689) — Annex III, Point 4(a) &#183; hiệu lực 01/08/2024, nghĩa vụ high-risk áp dụng từ 02/08/2026</span>
                 </div>
             </div>
             <div class="col reveal" style="flex:0.88;">
@@ -568,8 +588,7 @@ body.editing [contenteditable="true"]{outline:2px dashed var(--red); outline-off
     </div>
 
     <div class="slide-foot">
-        <div class="src">nguồn: <b>EU AI Act — Annex III, Point 4(a)</b></div>
-        <div class="pageno">02<span> / 12</span></div>
+        <div class="pageno">02<span> / 11</span></div>
     </div>
 
     <div class="notes">
@@ -580,10 +599,7 @@ body.editing [contenteditable="true"]{outline:2px dashed var(--red); outline-off
 </section>
 
 <!-- ======================================================================
-     SLIDE 4 — BỐI CẢNH 3/3: BỐN ĐIỂM NGHẼN (slide bản lề)
-     ====================================================================== -->
-<!-- ======================================================================
-     SLIDE 4 — Ý TƯỞNG: TỪ YÊU CẦU BẮT BUỘC ĐẾN MỘT AGENT
+     SLIDE 3 — Ý TƯỞNG: TỪ YÊU CẦU BẮT BUỘC ĐẾN MỘT AGENT
      ====================================================================== -->
 <section class="slide" aria-label="Ý tưởng — từ yêu cầu bắt buộc đến một agent">
     <div class="slide-head">
@@ -671,21 +687,17 @@ body.editing [contenteditable="true"]{outline:2px dashed var(--red); outline-off
     </div>
 
     <div class="slide-foot">
-        <div class="src">nguồn: <b>EU AI Act — Annex III 4(a) → Art. 12–14</b> · <b>docs/spec/…-spec.md §1</b> (E1 / E2) · không có số đo trên slide này</div>
-        <div class="pageno">03<span> / 12</span></div>
+        <div class="pageno">03<span> / 11</span></div>
     </div>
 
     <div class="notes">
         <p>Đây là bản lề giữa bối cảnh và hệ thống: tôi <b>chưa</b> nói kiến trúc, chỉ nói ý tưởng rút ra từ slide 2. Nếu luật đòi nhật ký, giải trình và giám sát, thì một lần gọi LLM không đáp ứng được — không phải vì model yếu, mà vì <b>không có bước nào để mà ghi lại</b>. Giải trình được là hệ quả của việc tách bước.</p>
         <p>“bước 1, 2, 3, n” ở đây cố ý để trống tên. Tên thật, số lượng thật và lưu lượng thật của từng nhánh nằm ở slide 4 — và tôi sẽ đo từng nhánh một, chứ không vẽ cho đẹp.</p>
-        <p><b>Phản biện dễ nhất:</b> “Tách bước thì tốn token hơn, được gì?” Đó đúng là câu hỏi E2 đặt ra, và tôi trả lời bằng số ở slide 9: hơn baseline mạnh nhất +0.04 macro-F1 với 2,5 lần token — tức là <b>không</b> thắng ở độ chính xác. Phần thắng nằm ở cột evidence coverage: 0.439 so với 0.000.</p>
+        <p><b>Phản biện dễ nhất:</b> “Tách bước thì tốn token hơn, được gì?” Đó đúng là câu hỏi E2 đặt ra, và tôi trả lời bằng số ở slide 8: hơn baseline mạnh nhất +0.04 macro-F1 với 2,5 lần token — tức là <b>không</b> thắng ở độ chính xác. Phần thắng nằm ở cột evidence coverage: 0.439 so với 0.000.</p>
         <p>Nếu được hỏi vì sao không còn slide “bốn điểm nghẽn”: các ràng buộc kỹ thuật của dữ liệu thật (văn bản CV dính chữ, khoảng thời gian chồng lấn) được nói đúng chỗ hơn ở slide 6, nơi đã có tên tool để gắn vào.</p>
     </div>
 </section>
 
-<!-- ======================================================================
-     SLIDE 5 — KIẾN TRÚC: GRAPH THẬT
-     ====================================================================== -->
 <!-- ======================================================================
      SLIDE 4 — KIẾN TRÚC: GRAPH THẬT (nằm ngang, không số đo)
      ====================================================================== -->
@@ -810,24 +822,22 @@ body.editing [contenteditable="true"]{outline:2px dashed var(--red); outline-off
                 <text class="svg-lab" x="940" y="548" font-size="17" fill="#0d0d0d"><tspan font-weight="700">13 node</tspan> · <tspan font-weight="700">4 conditional edge</tspan></text>
                 <text class="svg-lab" x="940" y="578" font-size="17">State là <tspan font-weight="700" fill="#0d0d0d">MỘT</tspan> pydantic model chảy xuyên graph</text>
             </svg>
-            <figcaption>Sơ đồ sinh từ chính graph · nguồn: docs/diagrams/graph.mmd · src/graph/build.py · src/graph/routes.py</figcaption>
         </figure>
     </div>
 
     <div class="slide-foot">
-        <div class="src">nguồn: <b>docs/diagrams/graph.mmd</b> · <b>src/graph/build.py</b> · <b>src/graph/routes.py</b> · % lưu lượng thật của bốn nhánh ở slide 11</div>
-        <div class="pageno">04<span> / 12</span></div>
+        <div class="pageno">04<span> / 11</span></div>
     </div>
 
     <div class="notes">
         <p>13 node, không phải 12 — đọc thẳng từ <code>docs/diagrams/graph.mmd</code>, sinh tự động từ chính graph. Bốn conditional edge nằm gọn trong <code>src/graph/routes.py</code>: mỗi hàm là một pure function của state, không gọi tool và không gọi model.</p>
         <p>Chú ý một chỗ dễ vẽ sai: <code>deep_review</code> <b>không</b> đi thẳng tới <code>rank</code> — nó quay về <code>decide</code>, rồi <code>decide → rank</code>. Đúng như <code>graph.mmd</code>.</p>
-        <p>Slide này cố tình <b>không có số</b>: nó trả lời câu "hệ thống gồm những gì". Câu "nhánh nào thật sự có lưu lượng" là một câu khác, và tôi trả lời bằng số đo ở slide 11 — bốn conditional edge, bốn con số đo trên <code>test_500</code>. Nguyên tắc mang về được: <b>nhánh không có số đo là nhánh trang trí</b> (spec §4).</p>
+        <p>Slide này cố tình <b>không có số</b>: nó trả lời câu "hệ thống gồm những gì". Câu "nhánh nào thật sự có lưu lượng" là một câu khác, và tôi trả lời bằng số đo ở slide 10 — bốn conditional edge, bốn con số đo trên <code>test_500</code>. Nguyên tắc mang về được: <b>nhánh không có số đo là nhánh trang trí</b> (spec §4).</p>
         <p>Ngưỡng <code>max_repair_attempts = 2</code>: đo trên dữ liệu thật thì vòng thứ hai chưa bao giờ phải chạy — 12/12 hồ sơ cần repair được sửa ngay vòng đầu (<code>src/graph/routes.py</code>).</p>
     </div>
 </section>
 <!-- ======================================================================
-     SLIDE 6 — KIẾN TRÚC: BA KHỐI LOGIC
+     SLIDE 5 — KIẾN TRÚC: BA KHỐI LOGIC
      ====================================================================== -->
 <section class="slide" aria-label="Kiến trúc — ba khối logic">
     <div class="slide-head">
@@ -867,8 +877,9 @@ body.editing [contenteditable="true"]{outline:2px dashed var(--red); outline-off
                     <text class="svg-node" x="357" y="152" text-anchor="middle">extract</text>
                     <rect x="20" y="176" width="205" height="40" fill="#fff" stroke="#0d0d0d" stroke-width="2"/>
                     <text class="svg-node" x="122" y="202" text-anchor="middle">repair</text>
-                    <text class="svg-lab" x="20" y="262" font-size="18">HIGH → <tspan font-family="'IBM Plex Mono',monospace">quarantine</tspan>, còn lại → <tspan font-family="'IBM Plex Mono',monospace">extract</tspan></text>
-                    <text class="svg-lab" x="20" y="292" font-size="18">Ngày không parse được → <tspan font-family="'IBM Plex Mono',monospace">repair</tspan>, tối đa 2 vòng</text>
+                    <text class="svg-lab" x="20" y="262" font-size="18">Guard chấm mỗi CV rủi ro <tspan font-weight="700" fill="#0d0d0d">HIGH</tspan> hoặc <tspan font-weight="700" fill="#0d0d0d">LOW</tspan></text>
+                    <text class="svg-lab" x="20" y="292" font-size="18">HIGH → <tspan font-family="'IBM Plex Mono',monospace">quarantine</tspan> (dừng, không chấm) · LOW → <tspan font-family="'IBM Plex Mono',monospace">extract</tspan></text>
+                    <text class="svg-lab" x="20" y="322" font-size="18">Ngày không parse được → <tspan font-family="'IBM Plex Mono',monospace">repair</tspan>, tối đa 2 vòng</text>
                 </g>
                 <line x1="492" y1="170" x2="528" y2="170" stroke="#0d0d0d" stroke-width="3" marker-end="url(#a-k3)"/>
 
@@ -905,8 +916,8 @@ body.editing [contenteditable="true"]{outline:2px dashed var(--red); outline-off
                     <text class="svg-node" x="1437" y="152" text-anchor="middle">decide</text>
                     <rect x="1100" y="176" width="205" height="40" fill="#fff" stroke="#0d0d0d" stroke-width="2"/>
                     <text class="svg-node" x="1202" y="202" text-anchor="middle">rank</text>
-                    <text class="svg-lab" x="1100" y="262" font-size="18">Vùng tranh chấp → <tspan font-family="'IBM Plex Mono',monospace">deep_review</tspan> một lượt</text>
-                    <text class="svg-lab" x="1100" y="292" font-size="18">Ngưỡng vùng xám = tham số điều khiển nhánh</text>
+                    <text class="svg-lab" x="1100" y="262" font-size="18">Điểm rơi giữa hai ngưỡng cắt (Good / Potential / No Fit)</text>
+                    <text class="svg-lab" x="1100" y="292" font-size="18">= <tspan font-weight="700" fill="#0d0d0d">vùng xám</tspan> &#8594; chấm lại một lượt ở <tspan font-family="'IBM Plex Mono',monospace">deep_review</tspan></text>
                 </g>
             </svg>
             <figcaption>Cùng 13 node của slide 4, nhóm lại theo trách nhiệm</figcaption>
@@ -924,20 +935,16 @@ body.editing [contenteditable="true"]{outline:2px dashed var(--red); outline-off
 
 
     <div class="slide-foot">
-        <div class="src">nguồn: <b>src/graph/build.py</b> · <b>docs/spec/…-spec.md</b> §2, §4, §6 · không có số đo mới trên slide này</div>
-        <div class="pageno">05<span> / 12</span></div>
+        <div class="pageno">05<span> / 11</span></div>
     </div>
 
     <div class="notes">
         <p>Ba tầng là cách đọc, không phải cấu trúc thứ hai trong code: vẫn đúng 13 node của slide 4.</p>
         <p>Rubric là quyết định thiết kế đáng nói nhất ở đây: JD được chuyển thành dữ liệu YAML có trọng số, cờ <code>must_have</code> và hai ngưỡng cắt (spec §6). HR sửa được mà hệ thống vẫn tái lập được; nhét JD vào prompt thì mỗi lần sửa là một hệ thống khác.</p>
-        <p><b>Phản biện dễ nhất:</b> "<code>reject_fast</code> chẳng phải là loại ứng viên sao?" Không: theo spec §2 nó gán nhãn <code>No Fit</code> nhưng <b>vẫn chấm mọi tiêu chí khác</b> để giao diện giải thích được — đó là chỗ Article 14 sống được. Cái giá của cổng này tôi đo và đưa lên slide 11.</p>
+        <p><b>Phản biện dễ nhất:</b> "<code>reject_fast</code> chẳng phải là loại ứng viên sao?" Không: theo spec §2 nó gán nhãn <code>No Fit</code> nhưng <b>vẫn chấm mọi tiêu chí khác</b> để giao diện giải thích được — đó là chỗ Article 14 sống được. Cái giá của cổng này tôi đo và đưa lên slide 10.</p>
     </div>
 </section>
 
-<!-- ======================================================================
-     SLIDE 7 — NĂM TOOL TẤT ĐỊNH
-     ====================================================================== -->
 <!-- ======================================================================
      SLIDE 6 — NĂM TOOL TẤT ĐỊNH
      ====================================================================== -->
@@ -945,7 +952,7 @@ body.editing [contenteditable="true"]{outline:2px dashed var(--red); outline-off
     <div class="slide-head">
         <div class="kicker"><span class="bar"></span>Thành phần</div>
         <h2 class="vn">Năm tool tất định, và việc không giao cho LLM</h2>
-        <div class="en">Five deterministic tools</div>
+        <div class="en">Five deterministic tools — <i>tất định</i>: cùng đầu vào luôn ra cùng đầu ra, không phải model đoán</div>
         <div class="head-rule"></div>
     </div>
 
@@ -972,17 +979,17 @@ body.editing [contenteditable="true"]{outline:2px dashed var(--red); outline-off
                 <tr>
                     <td class="mono" style="font-size:23px; color:var(--red-deep); font-weight:600; padding:18px 14px;">search_evidence</td>
                     <td style="font-size:23px; padding:18px 14px;">Tìm trong CV đoạn văn ứng với tiêu chí, trả về <b>nguyên văn kèm vị trí</b></td>
-                    <td style="font-size:23px; padding:18px 14px;">Nền tảng E1 — điểm chỉ bảo vệ được khi chỉ ra được câu đã sinh ra nó</td>
+                    <td style="font-size:23px; padding:18px 14px;">Điểm chỉ đáng tin khi chỉ ra được đúng câu trong CV đã sinh ra nó — đây là chỗ toàn bộ việc "truy vết bằng chứng" bắt đầu</td>
                 </tr>
                 <tr>
                     <td class="mono" style="font-size:23px; color:var(--red-deep); font-weight:600; padding:18px 14px;">scan_injection</td>
                     <td style="font-size:23px; padding:18px 14px;">Phát hiện câu lệnh ẩn trong CV nhắm vào chính model chấm điểm</td>
-                    <td style="font-size:23px; padding:18px 14px;">CV là văn bản của người ngoài, dán thẳng vào context của model</td>
+                    <td style="font-size:23px; padding:18px 14px;">CV không đáng tin nhưng vẫn đưa nguyên văn cho model đọc — giấu câu lệnh giả trong đó là có thể lừa được model</td>
                 </tr>
                 <tr>
                     <td class="mono" style="font-size:23px; color:var(--red-deep); font-weight:600; padding:18px 14px;">aggregate_scorecard</td>
-                    <td style="font-size:23px; padding:18px 14px;">Nhân điểm từng tiêu chí với trọng số rồi cộng lại</td>
-                    <td style="font-size:23px; padding:18px 14px;">Không để model tự cộng điểm của chính nó</td>
+                    <td style="font-size:23px; padding:18px 14px;">Mỗi tiêu chí có trọng số quan trọng khác nhau (JD quy định) — nhân điểm với trọng số rồi cộng ra điểm tổng</td>
+                    <td style="font-size:23px; padding:18px 14px;">Cộng điểm là phép toán, không phải suy luận — để model tự cộng thì cùng input có thể ra tổng khác nhau giữa các lần chạy</td>
                 </tr>
             </tbody>
         </table>
@@ -993,8 +1000,7 @@ body.editing [contenteditable="true"]{outline:2px dashed var(--red); outline-off
     </div>
 
     <div class="slide-foot">
-        <div class="src">nguồn: <b>src/tools/*.py</b> (docstring đầu file) · <b>docs/spec/…-spec.md §5</b></div>
-        <div class="pageno">06<span> / 12</span></div>
+        <div class="pageno">06<span> / 11</span></div>
     </div>
 
     <div class="notes">
@@ -1006,201 +1012,29 @@ body.editing [contenteditable="true"]{outline:2px dashed var(--red); outline-off
     </div>
 </section>
 <!-- ======================================================================
-     SLIDE 8 — WALKTHROUGH MỘT HỒ SƠ
+     SLIDE 7 — WALKTHROUGH MỘT HỒ SƠ
      ====================================================================== -->
-<!-- ======================================================================
-     WALKTHROUGH 1 / 7 — ingest → guard
-     ====================================================================== -->
-<section class="slide" aria-label="Demo — chạy trực tiếp một hồ sơ qua graph">
-    <div class="slide-head">
-        <div class="kicker"><span class="bar"></span>Demo</div>
-        <h2 class="vn">Chạy thật một hồ sơ, xem từng node sáng lên</h2>
-        <div class="en">Live run — the graph streamed node by node</div>
-        <div class="head-rule"></div>
+<section class="slide" aria-label="Demo">
+    <div class="word-only">
+        <div class="word reveal">Demo</div>
     </div>
 
-    <div class="slide-body">
-        <div class="row" style="gap:36px; height:100%;">
-
-            <!-- ===== TRÁI: bốn ca demo, mỗi ca bật một nhánh ===== -->
-            <div class="col" style="width:1010px; flex:none; display:flex; flex-direction:column;">
-                <div class="out-head reveal">Bốn ca demo — mỗi ca bật một nhánh khác nhau</div>
-
-                <div class="case reveal">
-                    <span class="n">1</span>
-                    <div>
-                        <div class="t">Ứng viên phù hợp — Senior Backend Engineer</div>
-                        <div class="b">đường chính, không rẽ <i>· 6 năm kinh nghiệm, kỳ vọng điểm &#8805; 0.70</i></div>
-                    </div>
-                </div>
-
-                <div class="case edge reveal">
-                    <span class="n">2</span>
-                    <div>
-                        <div class="t">Thiếu yêu cầu tiên quyết</div>
-                        <div class="b">must_have_check &#8594; reject_fast <i>· loại trước khi chấm, không tốn token chấm điểm</i></div>
-                    </div>
-                </div>
-
-                <div class="case edge reveal">
-                    <span class="n">3</span>
-                    <div>
-                        <div class="t">CV có chỉ thị ẩn nhắm vào model chấm điểm</div>
-                        <div class="b">guard &#8594; quarantine <i>· tắt guard bằng cờ ablation để xem nó có tác dụng gì</i></div>
-                    </div>
-                </div>
-
-                <div class="case edge reveal">
-                    <span class="n">4</span>
-                    <div>
-                        <div class="t">Hồ sơ ranh giới, điểm rơi sát ngưỡng</div>
-                        <div class="b">aggregate &#8594; deep_review <i>· chấm lại từng tiêu chí rồi mới ra nhãn</i></div>
-                    </div>
-                </div>
-
-                <div class="state-line reveal" style="margin-top:auto;">
-                    Bốn nhánh này là bốn <em>conditional edge</em> của graph ở slide 4. Stepper hỏi thẳng
-                    <em>src/graph/routes.py</em> — không chép lại luật rẽ, nên nó không thể lệch với graph thật.
-                </div>
-            </div>
-
-            <!-- ===== PHẢI: nhìn vào đâu + phương án dự phòng ===== -->
-            <div class="col stack" style="gap:20px;">
-                <div>
-                    <div class="out-head reveal">Nhìn vào đâu trên màn hình</div>
-                    <div class="watch reveal"><span class="tag">Trace</span><span>Stepper: node nào đang chạy, rẽ đi đâu, <b>ngay khi nó xảy ra</b></span></div>
-                    <div class="watch reveal"><span class="tag">Evidence</span><span>Trích dẫn được tô <b>ngay trên CV gốc</b>, không phải model kể lại</span></div>
-                    <div class="watch reveal"><span class="tag">Scorecard</span><span>Nhãn cuối cùng đóng góp của <b>từng tiêu chí</b></span></div>
-                    <div class="watch reveal"><span class="tag">E2</span><span>Các công tắc <b>ablation</b> — tắt một khâu rồi chạy lại</span></div>
-                </div>
-
-                <div class="callout reveal" style="font-size:20px; padding:18px 20px; margin-top:auto;">
-                    <span class="lbl">Dự phòng — replay offline hàng #146</span>
-                    Nếu mạng hoặc API hỏng: toàn bộ graph chạy lại được từ cache, <b>0 lần gọi API</b>.
-                    <div style="font-family:var(--font-mono); font-size:16px; line-height:1.5; color:var(--ink-2); margin-top:10px;">
-                        repair: bad_dates <b>8 &#8594; 0</b><br>
-                        aggregate: <b>0.6857</b> · vùng xám &#8594; deep_review<br>
-                        kết quả: <b>0.7524 &#183; Good Fit</b> — trùng nhãn thật
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div class="slide-foot">
-        <div class="src">nguồn: <b>app/demo_cases.py</b> (bốn ca) · <b>app/server.py</b> (SSE) · <b>src/graph/routes.py</b> (luật rẽ) · replay <b>#146</b> từ <b>data/cache/llm_cache.jsonl</b></div>
-        <div class="pageno">07<span> / 12</span></div>
+    <div class="slide-foot" style="border-top:none;">
+        <div class="pageno">07<span> / 11</span></div>
     </div>
 
     <div class="notes">
         <p><b>Chạy demo:</b> <code>python -m app.server</code> → <code>http://localhost:8000</code>. Mở sẵn trước khi lên nói, chọn preset ở khung “Dữ liệu đầu vào”. Mỗi ca mất vài chục giây vì nó gọi model thật.</p>
         <p><b>Thứ tự nên diễn:</b> ca 2 trước (nhanh nhất, thấy ngay nhánh tắt), rồi ca 3 (bật / tắt guard để so), rồi ca 4 nếu còn thời gian. Ca 1 chỉ cần nói miệng — nó không rẽ đi đâu cả.</p>
         <p><b>Điểm chính cần chỉ ra khi stepper chạy:</b> cái đang sáng lên không phải một hiệu ứng trình diễn. <code>predict_next_node</code> gọi thẳng bốn hàm routing trong <code>src/graph/routes.py</code> qua một bảng tra, còn các cạnh vô điều kiện thì soi theo <code>build_graph</code>. Bản đầu tiên <i>chép lại</i> luật rẽ và đã lệch khỏi graph ở ba chỗ; bảy test hiện ghim từng nhánh, ba trong số đó trượt với bản chép. Nói chuyện này ra — nó là lý do preview đáng tin.</p>
-        <p><b>Phản biện dễ nhất — tự nêu trước:</b> “Bốn ca này do anh tự viết, tất nhiên nó chạy đúng.” Đúng. Bốn ca là CV/JD tự soạn trong <code>app/demo_cases.py</code>, chọn riêng để mỗi ca bật đúng một nhánh — chúng chứng minh <b>cơ chế chạy đúng như mô tả</b>, không chứng minh gì về độ chính xác. Độ chính xác nằm ở slide 9–11, đo trên 300 và 500 hàng không phải do tôi soạn.</p>
+        <p><b>Phản biện dễ nhất — tự nêu trước:</b> “Bốn ca này do anh tự viết, tất nhiên nó chạy đúng.” Đúng. Bốn ca là CV/JD tự soạn trong <code>app/demo_cases.py</code>, chọn riêng để mỗi ca bật đúng một nhánh — chúng chứng minh <b>cơ chế chạy đúng như mô tả</b>, không chứng minh gì về độ chính xác. Độ chính xác nằm ở slide 8–10, đo trên 300 và 500 hàng không phải do tôi soạn.</p>
         <p><b>Cũng nói thẳng:</b> trên 300 CV thật của <code>dev_300</code>, <b>0</b> hồ sơ kích hoạt rule nào của guard. Ca 3 là CV tự soạn có chỉ thị ẩn. Giá trị của guard là <i>từ chối xử lý</i> một tài liệu đang cố can thiệp, không phải ngăn một can thiệp lẽ ra đã thành công.</p>
         <p><b>Nếu demo chết:</b> chuyển sang khối dự phòng bên phải và kể hàng #146 — CV đó ghi ngày kiểu <code>01/1-01/1</code> nên <code>extract</code> trả về 8 trường ngày hỏng, <code>repair</code> vá hết trong một vòng, điểm cộng lại rơi vào vùng xám nên bị chấm lại, và nhãn cuối trùng nhãn thật của dataset. Toàn bộ replay từ <code>data/cache/llm_cache.jsonl</code>, không gọi API lần nào.</p>
     </div>
 </section>
 
 <!-- ======================================================================
-     SLIDE 8 — ĐẦU RA
-     ====================================================================== -->
-<section class="slide" aria-label="Đầu ra — bằng chứng gắn vào điểm">
-    <div class="slide-head">
-        <div class="kicker"><span class="bar"></span>Đầu ra</div>
-        <h2 class="vn">Bằng chứng gắn vào điểm — và giới hạn của nó</h2>
-        <div class="en">Output: evidence attached to the score</div>
-        <div class="head-rule"></div>
-    </div>
-
-    <div class="slide-body">
-        <figure class="asset-slot reveal" data-asset="05-scorecard-evidence.png">
-            <svg viewBox="0 0 1560 528" role="img" aria-label="Scorecard hàng 146: tiêu chí, trích dẫn nguyên văn, điểm, tool_used">
-                <text x="8"    y="18" font-family="'Archivo',sans-serif" font-weight="800" font-size="14" fill="#0d0d0d" letter-spacing="1">TIÊU CHÍ &#183; TRÍCH DẪN NGUYÊN VĂN KÈM OFFSET</text>
-                <text x="1150" y="18" font-family="'Archivo',sans-serif" font-weight="800" font-size="14" fill="#0d0d0d" letter-spacing="1">ĐIỂM</text>
-                <text x="1352" y="18" font-family="'Archivo',sans-serif" font-weight="800" font-size="14" fill="#0d0d0d" letter-spacing="1">TOOL_USED</text>
-                <line x1="0" y1="26" x2="1560" y2="26" stroke="#0d0d0d" stroke-width="3"/>
-                <g>
-                    <text x="8" y="56" font-family="'IBM Plex Mono',monospace" font-size="16" fill="#0d0d0d">leadership_experience</text><rect x="205" y="42" width="86" height="19" fill="#ff3300"/><text x="211" y="56" font-family="'IBM Plex Mono',monospace" font-size="12" fill="#fff">must_have</text>
-                    <rect x="1150" y="43" width="110" height="15" fill="#ebebe6"/><rect x="1150" y="43" width="88" height="15" fill="#0d0d0d"/>
-                    <text x="1276" y="56" font-family="'IBM Plex Mono',monospace" font-size="16" fill="#0d0d0d">0.80</text>
-                    <text x="1352" y="56" font-family="'IBM Plex Mono',monospace" font-size="12.5" fill="#6e6e6a">deep_review</text>
-                    <line x1="14" y1="70" x2="14" y2="86" stroke="#ff3300" stroke-width="2.5"/><text x="28" y="83" font-family="'IBM Plex Mono',monospace" font-size="13.5" fill="#0d0d0d">&#8220;Trained a fresher's batch of 25 engineers&#8221; <tspan fill="#8a8a84">[2092:2133]</tspan></text>
-                    <line x1="0" y1="94" x2="1560" y2="94" stroke="#e8e8e4" stroke-width="1"/>
-                </g>
-                <g>
-                    <text x="8" y="118" font-family="'IBM Plex Mono',monospace" font-size="16" fill="#0d0d0d">client_focus_analysis</text>
-                    <rect x="1150" y="105" width="110" height="15" fill="#ebebe6"/><rect x="1150" y="105" width="88" height="15" fill="#0d0d0d"/>
-                    <text x="1276" y="118" font-family="'IBM Plex Mono',monospace" font-size="16" fill="#0d0d0d">0.80</text>
-                    <text x="1352" y="118" font-family="'IBM Plex Mono',monospace" font-size="12.5" fill="#6e6e6a">skill+evidence</text>
-                    <line x1="14" y1="132" x2="14" y2="148" stroke="#ff3300" stroke-width="2.5"/><text x="28" y="145" font-family="'IBM Plex Mono',monospace" font-size="13.5" fill="#0d0d0d">&#8220;Collaborated with design, strategy and sales teams to find solutions for client website projects&#8221; <tspan fill="#8a8a84">[1654:1750]</tspan></text>
-                    <line x1="0" y1="156" x2="1560" y2="156" stroke="#e8e8e4" stroke-width="1"/>
-                </g>
-                <g>
-                    <text x="8" y="180" font-family="'IBM Plex Mono',monospace" font-size="16" fill="#0d0d0d">system_requirements_validation</text>
-                    <rect x="1150" y="167" width="110" height="15" fill="#ebebe6"/><rect x="1150" y="167" width="88" height="15" fill="#0d0d0d"/>
-                    <text x="1276" y="180" font-family="'IBM Plex Mono',monospace" font-size="16" fill="#0d0d0d">0.80</text>
-                    <text x="1352" y="180" font-family="'IBM Plex Mono',monospace" font-size="12.5" fill="#6e6e6a">skill+evidence</text>
-                    <line x1="14" y1="194" x2="14" y2="210" stroke="#ff3300" stroke-width="2.5"/><text x="28" y="207" font-family="'IBM Plex Mono',monospace" font-size="13.5" fill="#0d0d0d">&#8220;Deployed and Delivered enhanced web plugins , security services, website data analysis…&#8221; <tspan fill="#8a8a84">[1538:1654]</tspan></text>
-                    <line x1="0" y1="218" x2="1560" y2="218" stroke="#e8e8e4" stroke-width="1"/>
-                </g>
-                <g>
-                    <text x="8" y="242" font-family="'IBM Plex Mono',monospace" font-size="16" fill="#0d0d0d">business_process_analysis</text>
-                    <rect x="1150" y="229" width="110" height="15" fill="#ebebe6"/><rect x="1150" y="229" width="88" height="15" fill="#0d0d0d"/>
-                    <text x="1276" y="242" font-family="'IBM Plex Mono',monospace" font-size="16" fill="#0d0d0d">0.80</text>
-                    <text x="1352" y="242" font-family="'IBM Plex Mono',monospace" font-size="12.5" fill="#6e6e6a">skill+evidence</text>
-                    <line x1="14" y1="256" x2="14" y2="272" stroke="#ff3300" stroke-width="2.5"/><text x="28" y="269" font-family="'IBM Plex Mono',monospace" font-size="13.5" fill="#0d0d0d">&#8220;Managed responsibilities of scoping and business meetings with business stakeholders&#8221; <tspan fill="#8a8a84">[2282:2366]</tspan></text>
-                    <line x1="0" y1="280" x2="1560" y2="280" stroke="#e8e8e4" stroke-width="1"/>
-                </g>
-                <g>
-                    <text x="8" y="304" font-family="'IBM Plex Mono',monospace" font-size="16" fill="#0d0d0d">meeting_facilitation</text>
-                    <rect x="1150" y="291" width="110" height="15" fill="#ebebe6"/><rect x="1150" y="291" width="88" height="15" fill="#0d0d0d"/>
-                    <text x="1276" y="304" font-family="'IBM Plex Mono',monospace" font-size="16" fill="#0d0d0d">0.80</text>
-                    <text x="1352" y="304" font-family="'IBM Plex Mono',monospace" font-size="12.5" fill="#6e6e6a">deep_review</text>
-                    <line x1="14" y1="318" x2="14" y2="334" stroke="#ff3300" stroke-width="2.5"/><text x="28" y="331" font-family="'IBM Plex Mono',monospace" font-size="13.5" fill="#0d0d0d">&#8220;Facilitating Meetings&#8221; <tspan fill="#8a8a84">[885:906]</tspan></text>
-                    <line x1="0" y1="342" x2="1560" y2="342" stroke="#e8e8e4" stroke-width="1"/>
-                </g>
-                <g>
-                    <text x="8" y="366" font-family="'IBM Plex Mono',monospace" font-size="16" fill="#0d0d0d">requirements_documentation</text>
-                    <rect x="1150" y="353" width="110" height="15" fill="#ebebe6"/><rect x="1150" y="353" width="77" height="15" fill="#0d0d0d"/>
-                    <text x="1276" y="366" font-family="'IBM Plex Mono',monospace" font-size="16" fill="#0d0d0d">0.70</text>
-                    <text x="1352" y="366" font-family="'IBM Plex Mono',monospace" font-size="12.5" fill="#6e6e6a">deep_review</text>
-                    <line x1="14" y1="380" x2="14" y2="396" stroke="#ff3300" stroke-width="2.5"/><text x="28" y="393" font-family="'IBM Plex Mono',monospace" font-size="13.5" fill="#0d0d0d">&#8220;Created and maintained programmatic and technical documentation&#8221; <tspan fill="#8a8a84">[2617:2680]</tspan></text>
-                    <line x1="0" y1="404" x2="1560" y2="404" stroke="#e8e8e4" stroke-width="1"/>
-                </g>
-                <g>
-                    <text x="8" y="428" font-family="'IBM Plex Mono',monospace" font-size="16" fill="#c52700">mainframe_modernization</text>
-                    <rect x="1150" y="415" width="110" height="15" fill="#ebebe6"/><rect x="1150" y="415" width="0" height="15" fill="#ebebe6"/>
-                    <text x="1276" y="428" font-family="'IBM Plex Mono',monospace" font-size="16" fill="#c52700">0.00</text>
-                    <text x="1352" y="428" font-family="'IBM Plex Mono',monospace" font-size="12.5" fill="#6e6e6a">deep_review</text>
-                    <line x1="14" y1="442" x2="14" y2="458" stroke="#c9c9c4" stroke-width="2.5"/><text x="28" y="455" font-family="'IBM Plex Mono',monospace" font-size="13.5" fill="#c52700" font-weight="600">KHÔNG có trích dẫn — has_evidence = false</text>
-                    <line x1="0" y1="466" x2="1560" y2="466" stroke="#e8e8e4" stroke-width="1"/>
-                </g>
-                <text x="8" y="492" font-family="'Archivo',sans-serif" font-weight="800" font-size="15" fill="#0d0d0d">6 / 7 TIÊU CHÍ CÓ TRÍCH DẪN &#183; TIÊU CHÍ DUY NHẤT CHẤM 0.00 LÀ TIÊU CHÍ DUY NHẤT KHÔNG CÓ</text>
-                <text x="8" y="514" font-family="'IBM Plex Mono',monospace" font-size="12.5" fill="#8a8a84">skill+evidence = normalize_skill + search_evidence &#183; &#8230; = trích dẫn bị cắt cho vừa slide, offset là của span đầy đủ</text>
-            </svg>
-        </figure>
-
-        <ul class="points reveal" style="margin-top:26px;">
-            <li style="font-size:26px;">Theo thiết kế: tiêu chí <b>0.0</b> trả về <b>không kèm trích dẫn</b>.</li>
-            <li style="font-size:26px;">Nên “CV im lặng về tiêu chí” và “CV không đạt tiêu chí” tới bước cộng điểm như <b>cùng một con số</b>.</li>
-        </ul>
-    </div>
-
-    <div class="slide-foot">
-        <div class="src">nguồn: replay hàng <b>#146</b> của <code>test_500</code> từ <b>data/cache/llm_cache.jsonl</b> (0 lần gọi API) · <code>SCORE_SYSTEM</code>: <b>src/graph/scoring.py</b></div>
-        <div class="pageno">08<span> / 12</span></div>
-    </div>
-
-    <div class="notes">
-        <p>Đây là thứ agent giao ra: không phải một nhãn, mà một scorecard trong đó <b>mỗi điểm dắt theo câu đã sinh ra nó</b>, kèm offset ký tự để slice lại được từ CV gốc. Sáu trong bảy tiêu chí có trích dẫn.</p>
-        <p>Giới hạn là một quyết định thiết kế chứ không phải bug: <code>SCORE_SYSTEM</code> yêu cầu tiêu chí nào CV không hỗ trợ thì chấm 0.0 và <b>không trả quote</b>. Hệ quả thật là hệ thống không phân biệt được “CV im lặng về tiêu chí” với “CV rõ ràng không đạt” — cả hai tới <code>aggregate_scorecard</code> như số 0.0. Đo trên dev: 988 trong 1906 điểm tiêu chí là 0.0, và 866 trong số đó tới aggregator không kèm bằng chứng nào.</p>
-        <p><b>Phản biện dễ nhất:</b> "Vậy bỏ các tiêu chí 0.0 khỏi tổng đi." Đã thử, và không được: cặp contested vẫn ở mức ngẫu nhiên (AUC 0.524), cặp tách được thì tệ đi (0.628 → 0.564), và 56 hàng rụng khỏi phép so sánh. Tín hiệu "vắng mặt" đang gánh phần lớn thứ phân biệt được một hồ sơ có fit với một hồ sơ không fit.</p>
-        <p>Con số coverage của cả tập và đối chiếu với baseline nằm ở slide benchmark ngay sau đây — 0.486 trên <code>test_500</code> so với 0.000 của cả ba baseline.</p>
-    </div>
-</section>
-<!-- ======================================================================
-     SLIDE 10 — BENCHMARK
+     SLIDE 8 — BENCHMARK
      ====================================================================== -->
 <section class="slide" aria-label="Benchmark agent so với ba baseline">
     <div class="slide-head">
@@ -1210,116 +1044,60 @@ body.editing [contenteditable="true"]{outline:2px dashed var(--red); outline-off
         <div class="head-rule"></div>
     </div>
 
-    <div class="slide-body">
-        <div class="row" style="gap:28px; height:100%;">
+    <div class="slide-body" style="display:flex; flex-direction:column;">
+        <div class="reveal" style="font-family:var(--font-mono); font-size:16px; line-height:1.4; color:var(--ink-3); padding-bottom:14px; margin-bottom:16px; border-bottom:1px solid var(--grid);">
+            <b style="color:var(--ink-2);">macro-F1</b>: điểm đúng trung bình trên cả ba nhãn (Good/Potential/No Fit), càng gần 1 càng tốt &#183; <b style="color:var(--ink-2);">AUC</b>: mức phân biệt được hai nhãn cạnh nhau — 0.5 = đoán ngẫu nhiên, 1.0 = hoàn hảo &#183; <b style="color:var(--ink-2);">Evidence (E1)</b>: % điểm số có trích được đúng câu trong CV làm bằng chứng.
+        </div>
+
+        <div class="row" style="gap:40px; flex:1; min-height:0;">
 
             <!-- ===== CỘT TRÁI: bảng dev_300 + confusion matrix test_500 ===== -->
-            <div class="col stack" style="width:1010px; flex:none; gap:16px;">
+            <div class="col stack" style="width:1080px; flex:none; gap:30px;">
 
-                <table class="swiss reveal">
+                <table class="swiss lg reveal">
                     <thead>
                         <tr>
                             <th>System <span style="font-weight:400; text-transform:none; letter-spacing:0; color:var(--ink-3);">(dev_300, n=300)</span></th>
                             <th class="num">macro-F1</th>
-                            <th class="num">Good Fit recall</th>
+                            <th class="num">GF recall</th>
+                            <th class="num">NF F1</th>
                             <th class="num">Tokens</th>
-                            <th class="num">Evidence (E1)</th>
+                            <th class="num">E1</th>
                         </tr>
                     </thead>
                     <tbody>
-                        <tr class="hero"><td class="mono">agent</td><td class="num">0.4155</td><td class="num">0.176</td><td class="num">1.142.849</td><td class="num">0.439</td></tr>
-                        <tr><td class="mono">baseline_naive</td><td class="num">0.3742</td><td class="num">0.041</td><td class="num">521.102</td><td class="num">0.000</td></tr>
-                        <tr><td class="mono">baseline_rubric</td><td class="num">0.3750</td><td class="num">0.041</td><td class="num">453.321</td><td class="num">0.000</td></tr>
-                        <tr><td class="mono">baseline_tfidf</td><td class="num">0.3673</td><td class="num">0.419</td><td class="num">0</td><td class="num">0.000</td></tr>
+                        <tr class="hero"><td class="mono">agent</td><td class="num">0.4155</td><td class="num">0.176</td><td class="num">0.644</td><td class="num">1.142.849</td><td class="num">0.439</td></tr>
+                        <tr><td class="mono">baseline_naive</td><td class="num">0.3742</td><td class="num">0.041</td><td class="num">0.700</td><td class="num">521.102</td><td class="num">0.000</td></tr>
+                        <tr><td class="mono">baseline_rubric</td><td class="num">0.3750</td><td class="num">0.041</td><td class="num">0.699</td><td class="num">453.321</td><td class="num">0.000</td></tr>
+                        <tr><td class="mono">baseline_tfidf</td><td class="num">0.3673</td><td class="num">0.419</td><td class="num">0.494</td><td class="num">0</td><td class="num">0.000</td></tr>
                     </tbody>
                 </table>
 
-                <div class="row" style="gap:20px;">
-                    <div style="width:600px; flex:none;">
-                        <figure class="asset-slot reveal" data-asset="07-confusion-test500.png">
-                            <svg viewBox="0 0 566 330" role="img" aria-label="Confusion matrix 3x3 trên test_500">
-                                <text x="0" y="14" font-family="'Archivo',sans-serif" font-weight="800" font-size="14" fill="#0d0d0d">CONFUSION MATRIX &#183; test_500 (n=500)</text>
-                                <text x="175" y="46" font-family="'IBM Plex Mono',monospace" font-size="12" fill="#6e6e6a" text-anchor="middle">dự đoán Good Fit</text>
-                                <text x="325" y="46" font-family="'IBM Plex Mono',monospace" font-size="12" fill="#6e6e6a" text-anchor="middle">Potential Fit</text>
-                                <text x="475" y="46" font-family="'IBM Plex Mono',monospace" font-size="12" fill="#6e6e6a" text-anchor="middle">No Fit</text>
-
-                                <!-- hàng 1: thật Good Fit -->
-                                <text x="95" y="46" font-family="'IBM Plex Mono',monospace" font-size="11" fill="#6e6e6a" text-anchor="end">NHÃN THẬT &#8595;</text>
-                                <text x="95" y="96" font-family="'IBM Plex Mono',monospace" font-size="11" fill="#0d0d0d" text-anchor="end">Good Fit</text>
-                                <rect x="100" y="56" width="150" height="72" fill="#fbe3dc" stroke="#0d0d0d" stroke-width="3"/>
-                                <text x="175" y="100" font-family="'Archivo',sans-serif" font-weight="800" font-size="24" fill="#0d0d0d" text-anchor="middle">26</text>
-                                <rect x="250" y="56" width="150" height="72" fill="#fbe3dc" stroke="#fff" stroke-width="2"/>
-                                <text x="325" y="100" font-family="'Archivo',sans-serif" font-weight="800" font-size="24" fill="#0d0d0d" text-anchor="middle">31</text>
-                                <rect x="400" y="56" width="150" height="72" fill="#ef8f6e" stroke="#ff3300" stroke-width="4"/>
-                                <text x="475" y="100" font-family="'Archivo',sans-serif" font-weight="800" font-size="24" fill="#0d0d0d" text-anchor="middle">73</text>
-
-                                <!-- hàng 2: thật Potential Fit -->
-                                <text x="95" y="168" font-family="'IBM Plex Mono',monospace" font-size="11" fill="#0d0d0d" text-anchor="end">Potential Fit</text>
-                                <rect x="100" y="128" width="150" height="72" fill="#f6bda9" stroke="#fff" stroke-width="2"/>
-                                <text x="175" y="172" font-family="'Archivo',sans-serif" font-weight="800" font-size="24" fill="#0d0d0d" text-anchor="middle">36</text>
-                                <rect x="250" y="128" width="150" height="72" fill="#f6bda9" stroke="#0d0d0d" stroke-width="3"/>
-                                <text x="325" y="172" font-family="'Archivo',sans-serif" font-weight="800" font-size="24" fill="#0d0d0d" text-anchor="middle">40</text>
-                                <rect x="400" y="128" width="150" height="72" fill="#ef8f6e" stroke="#fff" stroke-width="2"/>
-                                <text x="475" y="172" font-family="'Archivo',sans-serif" font-weight="800" font-size="24" fill="#0d0d0d" text-anchor="middle">50</text>
-
-                                <!-- hàng 3: thật No Fit -->
-                                <text x="95" y="240" font-family="'IBM Plex Mono',monospace" font-size="11" fill="#0d0d0d" text-anchor="end">No Fit</text>
-                                <rect x="100" y="200" width="150" height="72" fill="#f6bda9" stroke="#fff" stroke-width="2"/>
-                                <text x="175" y="244" font-family="'Archivo',sans-serif" font-weight="800" font-size="24" fill="#0d0d0d" text-anchor="middle">36</text>
-                                <rect x="250" y="200" width="150" height="72" fill="#f6bda9" stroke="#fff" stroke-width="2"/>
-                                <text x="325" y="244" font-family="'Archivo',sans-serif" font-weight="800" font-size="24" fill="#0d0d0d" text-anchor="middle">43</text>
-                                <rect x="400" y="200" width="150" height="72" fill="#a32207" stroke="#0d0d0d" stroke-width="3"/>
-                                <text x="475" y="244" font-family="'Archivo',sans-serif" font-weight="800" font-size="24" fill="#ffffff" text-anchor="middle">165</text>
-
-                                <!-- thang màu một sắc -->
-                                <text x="100" y="298" font-family="'IBM Plex Mono',monospace" font-size="12" fill="#6e6e6a">số hàng &#183; thang một sắc, nhạt &#8594; đậm</text>
-                                <rect x="100" y="306" width="60" height="14" fill="#fbe3dc"/>
-                                <rect x="160" y="306" width="60" height="14" fill="#f6bda9"/>
-                                <rect x="220" y="306" width="60" height="14" fill="#ef8f6e"/>
-                                <rect x="280" y="306" width="60" height="14" fill="#e0552b"/>
-                                <rect x="340" y="306" width="60" height="14" fill="#a32207"/>
-                                <text x="408" y="318" font-family="'IBM Plex Mono',monospace" font-size="12" fill="#0d0d0d">0 &#8594; 165</text>
-                            </svg>
-                            <figcaption><b style="color:#c52700;">Ô viền đỏ</b>: 73 hàng nhãn thật Good Fit bị trả về No Fit &#183; viền đen = đường chéo</figcaption>
-                        </figure>
-                    </div>
-
-                    <div class="col stack reveal" style="gap:14px;">
-                        <div class="callout" style="font-size:19px; padding:14px 18px;">
-                            <span class="lbl">Tập khác — test_500</span>
-                            Chạy <b>MỘT</b> lần · macro-F1 <b>0.3939</b> &#183; E1 <b>0.486</b><br>500 hàng, 0 lỗi. Baseline <b>chưa chạy</b> trên tập này.
-                        </div>
-                        <div style="font-family:var(--font-mono); font-size:15px; line-height:1.45; color:var(--ink-3);">
-                            Hai tập <b style="color:var(--ink-2);">không trộn</b>:<br>
-                            bảng trên đo trên <b style="color:var(--ink-2);">dev_300</b>,<br>
-                            ma trận này đo trên <b style="color:var(--ink-2);">test_500</b>.
-                        </div>
-                    </div>
+                <div class="callout reveal" style="font-size:22px; padding:22px 26px;">
+                    <span class="lbl">Trần của bài toán, không phải của hệ này</span>
+                    AUC Good Fit / Potential Fit: agent <b>0.482</b> &#183; classifier <b>có giám sát</b>, xem nhãn agent chưa từng thấy, chỉ đạt <b>0.577</b>. Cả hai sát mức đoán ngẫu nhiên (0.5) — chi tiết ở slide 9.
                 </div>
             </div>
 
-            <!-- ===== CỘT PHẢI: ba phản biện — ba câu trả lời ===== -->
-            <div class="col stack" style="gap:16px;">
+            <!-- ===== CỘT PHẢI: ba phản biện — ba câu trả lời, theo flow đọc bảng trái sang phải ===== -->
+            <div class="col stack" style="gap:28px; justify-content:center;">
 
-                <div class="ans reveal">
-                    <div class="obj"><b>Phản biện</b>&#8220;Hơn baseline mạnh nhất chỉ +0.04 macro-F1, đổi bằng 2,5 lần token.&#8221;</div>
-                    <div class="ttl">Cột cuối không phải chênh lệch — là có và không có</div>
-                    <div class="ev">Evidence coverage <b>0.439</b> so với <b>0.000</b> ở cả ba baseline. Nhãn không truy được về câu nào trong CV thì Annex III không cho triển khai.</div>
-                    <div class="ex">ví dụ — hàng #146: 7 tiêu chí, <b>12 trích dẫn verbatim</b>, 0 rơi, kèm offset ký tự. <i>Giá: ~3.800 token mỗi CV.</i></div>
+                <div class="ans reveal" style="padding:18px 24px 20px;">
+                    <div class="obj" style="font-size:17px;"><b>Phản biện</b>&#8220;TF-IDF tìm Good Fit giỏi hơn: recall 0.419 so với 0.176, lại 0 token.&#8221;</div>
+                    <div class="ttl" style="font-size:25px;">Recall cao vì nó đoán rộng — macro-F1 của nó thấp nhất</div>
+                    <div class="ev" style="font-size:20px;">Nó đổi No Fit lấy Good Fit: No Fit F1 <b>0.494</b> so với <b>0.644</b>. Cộng lại còn <b>0.3673</b> — thấp nhất trong bốn hệ.</div>
                 </div>
 
-                <div class="ans reveal">
-                    <div class="obj"><b>Phản biện</b>&#8220;TF-IDF tìm Good Fit giỏi hơn: recall 0.419 so với 0.176, lại 0 token.&#8221;</div>
-                    <div class="ttl">Recall cao vì nó đoán rộng — macro-F1 của nó thấp nhất</div>
-                    <div class="ev">Nó đổi No Fit lấy Good Fit: No Fit F1 <b>0.494</b> so với <b>0.644</b>. Cộng lại còn <b>0.3673</b> — thấp nhất trong bốn hệ.</div>
-                    <div class="ex">trần của bài toán — AUC xếp Good Fit trên Potential: agent 0.482 &#183; tfidf 0.526 &#183; classifier <b>được xem nhãn</b> 0.577. <i>Cả ba sát tung đồng xu.</i></div>
+                <div class="ans reveal" style="padding:18px 24px 20px;">
+                    <div class="obj" style="font-size:17px;"><b>Phản biện</b>&#8220;Hơn baseline mạnh nhất chỉ +0.04 macro-F1, đổi bằng 2,5 lần token.&#8221;</div>
+                    <div class="ttl" style="font-size:25px;">Cột cuối không phải chênh lệch — là có và không có</div>
+                    <div class="ev" style="font-size:20px;">Evidence coverage <b>0.439</b> so với <b>0.000</b> ở cả ba baseline. Nhãn không truy được về câu nào trong CV thì Annex III không cho triển khai.</div>
                 </div>
 
-                <div class="ans reveal">
-                    <div class="obj"><b>Phản biện</b>&#8220;Agent cũng loại oan: 73 / 130 hàng nhãn thật Good Fit bị trả về No Fit.&#8221;</div>
-                    <div class="ttl">Loại oan ở đây đo được, tách được, và tắt được</div>
-                    <div class="ev">73 = <b>28</b> do cổng <code class="mono">must_have</code> + <b>45</b> do tầng chấm điểm. Cổng chặn 121 hàng trước khi chấm, precision <b>0.645</b>.</div>
-                    <div class="ex">tắt cổng bằng một cờ ablation: <b>+0.033 macro-F1</b> (dev_300). <i>Sàng lọc từ khóa cũng loại oan — không có con số nào.</i></div>
+                <div class="ans reveal" style="padding:18px 24px 20px;">
+                    <div class="obj" style="font-size:17px;"><b>Phản biện</b>&#8220;Agent cũng loại oan: 73 / 130 hàng nhãn thật Good Fit bị trả về No Fit.&#8221;</div>
+                    <div class="ttl" style="font-size:25px;">Loại oan ở đây đo được, tách được, và tắt được</div>
+                    <div class="ev" style="font-size:20px;">73 = <b>28</b> do cổng <code class="mono">must_have</code> + <b>45</b> do tầng chấm điểm — phân rã đầy đủ ở slide 10.</div>
                 </div>
 
             </div>
@@ -1327,21 +1105,21 @@ body.editing [contenteditable="true"]{outline:2px dashed var(--red); outline-off
     </div>
 
     <div class="slide-foot">
-        <div class="src">nguồn: <b>baselines.md</b> &#183; dev_300, n=300 (bảng, AUC) &#183; <b>scoring_layer.md</b> (trần 0.577) &#183; <b>test_shipped.md</b> &#183; n=500 (confusion, cổng must_have) &#183; <b>must_have_gate.md</b> (ablation, dev_300)</div>
-        <div class="pageno">09<span> / 12</span></div>
+        <div class="pageno">08<span> / 11</span></div>
     </div>
 
     <div class="notes">
-        <p><b>Cách trình bày slide này:</b> đọc to cả ba dòng phản biện trước, rồi mới trả lời. Ba con số bất lợi đó do tôi đo và tôi nêu — không phải chỗ tôi quên nói.</p>
-        <p><b>Thẻ 1.</b> Spec &#167;7 dự trù đúng tình huống baseline rubric-in-prompt sát agent: khi đó giá trị của agent phải nằm ở truy vết bằng chứng, xử lý CV lỗi, chặn can thiệp và chi phí. 0.439 so với 0.000 không phải một khoảng cách hơn kém — ba baseline <i>chưa bao giờ sinh ra</i> một trích dẫn để mà đo. Nếu bị hỏi &#8220;+0.04 với 2,5 lần token thì đáng không?&#8221; — tính thuần theo macro-F1 thì <b>không</b>, và đó là lý do E2 chỉ được tuyên là đạt một phần ở slide cuối. Câu trả lời không phải &#8220;đáng vì F1&#8221; mà là: một nhãn không kèm bằng chứng thì không triển khai được cho nhóm nguy cơ cao ở slide 2, nên nó không phải một lựa chọn rẻ hơn.</p>
-        <p><b>Thẻ 2.</b> Recall 0.419 của TF-IDF là thật, và Good Fit F1 của nó (0.356) cũng cao hơn agent (0.236) — nói rõ điểm này. Nhưng nó mua recall bằng cách đẩy hàng ra khỏi No Fit, nên No Fit F1 tụt còn 0.494 và macro-F1 tổng là thấp nhất trong bốn hệ. Chốt bằng trần: trên 149 hàng mang một trong hai nhãn, AUC của agent là 0.482 với khoảng bootstrap [0.386, 0.575]; một classifier có giám sát, cross-validate theo JD, được xem nhãn mà agent không bao giờ thấy, chỉ đạt 0.577. Đó là trần của <i>bài toán</i>, không phải của hệ này. <b>Nếu bị đánh ngược:</b> &#8220;vậy cả hai đều vô dụng&#8221; — đúng với riêng cặp Good/Potential, và đó chính là nội dung slide 10.</p>
-        <p><b>Thẻ 3.</b> Phân rã 73 hàng: <code>test_shipped.md</code> ghi cổng <code>must_have</code> chặn 121 hàng trước khi chấm, trong đó 28 hàng mang nhãn thật Good Fit; <code>reject_fast</code> luôn trả No Fit, nên 28 trong 73 là do cổng, 45 còn lại là do tầng chấm điểm. Tiêu chí chặn nhiều nhất là <code>experience_years</code> (48 / 121 hàng) — nối thẳng về ca demo số 2 ở slide 7, và về hàng #146 nơi CV ghi ngày kiểu <code>01/1-01/1</code>. <b>Hai số này ở hai tập khác nhau:</b> 28/45 đo trên test_500, còn +0.033 khi tắt cổng đo trên dev_300 (<code>must_have_gate.md</code>: 0.3721 &#8594; 0.4052, 33/300 dự đoán đổi, +208k token). Đừng gộp chúng thành một câu.</p>
+        <p><b>Chiến lược mở đầu:</b> callout trần bài toán (trên, cạnh bảng) đọc trước tiên — AUC agent 0.482, classifier có giám sát cũng chỉ 0.577, cả hai sát ngẫu nhiên — để khán giả không kỳ vọng sai trước khi nhìn macro-F1. Sau đó đọc bảng trái sang phải: Good Fit recall (TF-IDF nổi lên trước) &#8594; No Fit F1 (giải thích ngay tại sao TF-IDF cao recall) &#8594; macro-F1/Tokens/Evidence (điểm tổng và cái baseline không có).</p>
+        <p><b>Cách trình bày ba thẻ phản biện:</b> đọc to cả ba dòng phản biện trước, rồi mới trả lời. Ba con số bất lợi đó do tôi đo và tôi nêu — không phải chỗ tôi quên nói.</p>
+        <p><b>Thẻ 1 (TF-IDF).</b> Recall 0.419 của TF-IDF là thật, và Good Fit F1 của nó (0.356) cũng cao hơn agent (0.236) — nói rõ điểm này. Nhưng nó mua recall bằng cách đẩy hàng ra khỏi No Fit, nên No Fit F1 tụt còn 0.494 và macro-F1 tổng là thấp nhất trong bốn hệ — cột No Fit F1 trên bảng giờ cho thấy trade-off này trực tiếp, không cần đợi câu trả lời. Chốt bằng trần: trên 149 hàng mang một trong hai nhãn, AUC của agent là 0.482 với khoảng bootstrap [0.386, 0.575]; một classifier có giám sát, cross-validate theo JD, được xem nhãn mà agent không bao giờ thấy, chỉ đạt 0.577. Đó là trần của <i>bài toán</i>, không phải của hệ này. <b>Nếu bị đánh ngược:</b> &#8220;vậy cả hai đều vô dụng&#8221; — đúng với riêng cặp Good/Potential, và đó chính là nội dung slide 9.</p>
+        <p><b>Thẻ 2 (macro-F1/token).</b> Spec &#167;7 dự trù đúng tình huống baseline rubric-in-prompt sát agent: khi đó giá trị của agent phải nằm ở truy vết bằng chứng, xử lý CV lỗi, chặn can thiệp và chi phí. 0.439 so với 0.000 không phải một khoảng cách hơn kém — ba baseline <i>chưa bao giờ sinh ra</i> một trích dẫn để mà đo. Nếu bị hỏi &#8220;+0.04 với 2,5 lần token thì đáng không?&#8221; — tính thuần theo macro-F1 thì <b>không</b>, và đó là lý do E2 chỉ được tuyên là đạt một phần ở slide cuối. Câu trả lời không phải &#8220;đáng vì F1&#8221; mà là: một nhãn không kèm bằng chứng thì không triển khai được cho nhóm nguy cơ cao ở slide 2, nên nó không phải một lựa chọn rẻ hơn.</p>
+        <p><b>Thẻ 3 (loại oan).</b> Phân rã 73 hàng: <code>test_shipped.md</code> ghi cổng <code>must_have</code> chặn 121 hàng trước khi chấm, trong đó 28 hàng mang nhãn thật Good Fit; <code>reject_fast</code> luôn trả No Fit, nên 28 trong 73 là do cổng, 45 còn lại là do tầng chấm điểm. Tiêu chí chặn nhiều nhất là <code>experience_years</code> (48 / 121 hàng) — nối thẳng về ca demo số 2 ở slide 7, và về hàng #146 nơi CV ghi ngày kiểu <code>01/1-01/1</code>. <b>Hai số này ở hai tập khác nhau:</b> 28/45 đo trên test_500, còn +0.033 khi tắt cổng đo trên dev_300 (<code>must_have_gate.md</code>: 0.3721 &#8594; 0.4052, 33/300 dự đoán đổi, +208k token). Đừng gộp chúng thành một câu.</p>
         <p><b>Khác biệt thật, nói thẳng:</b> một hệ sàng lọc thông thường cũng loại oan, nhưng không biết mình loại oan bao nhiêu, không tách được lỗi thuộc về khâu nào, và không có công tắc nào để tắt khâu đó đi rồi đo lại.</p>
     </div>
 </section>
 
 <!-- ======================================================================
-     SLIDE 11 — ORDERING
+     SLIDE 9 — ORDERING
      ====================================================================== -->
 <section class="slide" aria-label="Ordering — chỗ hệ thống thật sự hỏng">
     <div class="slide-head">
@@ -1410,40 +1188,34 @@ body.editing [contenteditable="true"]{outline:2px dashed var(--red); outline-off
             <figcaption>Giữa <code>Good Fit</code> và <code>Potential Fit</code>, thứ tự không yếu — nó <b>bị đảo</b></figcaption>
         </figure>
 
-        <div class="row" style="margin-top:16px; gap:30px;">
+        <div class="row" style="margin-top:44px; gap:30px;">
             <div class="col" style="flex:1.25;">
                 <ul class="points reveal">
-                    <li style="font-size:23px; margin-bottom:14px;">AUC <b>0.482</b>, bootstrap 95% <b>[0.386, 0.575]</b> — chứa cả mức ngẫu nhiên</li>
-                    <li style="font-size:23px; margin-bottom:14px;">Trần trên: classifier <b>có giám sát</b> cũng chỉ đạt <b>0.577</b></li>
-                    <li style="font-size:23px; margin-bottom:14px;">Chỉnh lại ngưỡng cắt được nhiều nhất <b>+0.0210</b> — và đã overfit</li>
-                    <li style="font-size:23px; margin-bottom:0;">Power <b>0.37</b>; cần <b>~436 hàng</b> contested mới đạt 0.80</li>
+                    <li style="font-size:27px; margin-bottom:22px;">AUC <b>0.482</b> — không phân biệt nổi hai lớp, sát mức ngẫu nhiên</li>
+                    <li style="font-size:27px; margin-bottom:0;">Trần trên: classifier <b>có giám sát</b>, được xem nhãn, cũng chỉ đạt <b>0.577</b></li>
                 </ul>
             </div>
             <div class="col stack" style="flex:1;">
-                <div class="callout reveal" style="font-size:21px;">
+                <div class="callout reveal" style="font-size:24px; padding:26px 30px;">
                     <span class="lbl">Thang điểm thật sự là gì</span>
                     <b>87,7%</b> điểm tiêu chí đúng bằng <b>0.0 · 0.5 · 1.0</b> — model trả lời <i>không / có thể / có</i>.
-                </div>
-                <div class="philosophy reveal" style="font-size:22px; line-height:1.28;">
-                    Một thay đổi <span>không đo được</span> thì không nên làm chỉ vì có một câu chuyện hay về lý do nó nên hiệu quả.
                 </div>
             </div>
         </div>
     </div>
 
     <div class="slide-foot">
-        <div class="src">nguồn: <b>docs/measurements/scoring_layer.md</b> · dev_300 · 149 hàng contested (74 Good Fit / 75 Potential Fit) · 1906 điểm tiêu chí</div>
-        <div class="pageno">10<span> / 12</span></div>
+        <div class="pageno">09<span> / 11</span></div>
     </div>
 
     <div class="notes">
         <p>Đây là slide tôi muốn người nghe nhớ nhất, và nó nói hệ thống hỏng chứ không nói hệ thống tốt. Median của <code>Potential Fit</code> thật (0.490) cao hơn median của <code>Good Fit</code> thật (0.350) — giữa hai lớp này thứ tự bị đảo, và AUC 0.482 nói đúng điều đó bằng đơn vị khác.</p>
-        <p><b>Phản biện dễ nhất:</b> "Vậy sửa scoring layer đi." Không sửa được bằng dữ liệu đang có: khoảng bootstrap [0.386, 0.575] chứa cả mức ngẫu nhiên lẫn trần trên 0.577, nghĩa là split này <b>không phân biệt được</b> ba dòng đó với nhau. Power 0.37; cần ~436 hàng contested mới đạt 0.80, không split nào của dự án có đủ.</p>
+        <p><b>Phản biện dễ nhất:</b> "Vậy sửa scoring layer đi." Không sửa được bằng dữ liệu đang có: bootstrap 95% [0.386, 0.575] chứa cả mức ngẫu nhiên lẫn trần trên 0.577, nghĩa là split này <b>không phân biệt được</b> ba dòng đó với nhau. Power 0.37; cần ~436 hàng contested mới đạt 0.80, không split nào của dự án có đủ. Chỉnh ngưỡng cắt tối đa cũng chỉ +0.0210 — và đã overfit trên chính split này.</p>
         <p>Nếu bị hỏi về việc bỏ các tiêu chí 0.0 khỏi tổng: đã thử. Cặp contested vẫn ở mức ngẫu nhiên (0.524), cặp tách được thì tệ đi (0.628 → 0.564), và 56 hàng rụng khỏi phép so sánh.</p>
     </div>
 </section>
 <!-- ======================================================================
-     SLIDE 12 — LƯU LƯỢNG NHÁNH & ĐÓNG GÓP TỪNG MODULE
+     SLIDE 10 — LƯU LƯỢNG NHÁNH & ĐÓNG GÓP TỪNG MODULE
      ====================================================================== -->
 <section class="slide" aria-label="Lưu lượng nhánh và đóng góp từng module">
     <div class="slide-head">
@@ -1454,16 +1226,8 @@ body.editing [contenteditable="true"]{outline:2px dashed var(--red); outline-off
     </div>
 
     <div class="slide-body">
-        <figure class="asset-slot reveal" data-asset="09-branch-traffic.png">
-            <svg viewBox="0 0 1560 240" role="img" aria-label="Lưu lượng bốn nhánh và delta macro-F1 của từng ablation">
-                <defs>
-                    <pattern id="hatch" patternUnits="userSpaceOnUse" width="8" height="8" patternTransform="rotate(45)">
-                        <rect width="8" height="8" fill="#ebebe6"/>
-                        <line x1="0" y1="0" x2="0" y2="8" stroke="#9a9a96" stroke-width="3"/>
-                    </pattern>
-                </defs>
-
-                <!-- ===== TRÁI: lưu lượng 4 nhánh ===== -->
+        <figure class="asset-slot reveal" data-asset="09-branch-traffic.png" style="width:1000px;">
+            <svg viewBox="0 0 770 240" role="img" aria-label="Lưu lượng bốn nhánh conditional edge trên test_500">
                 <g>
                     <text x="0" y="14" font-family="'Archivo',sans-serif" font-weight="800" font-size="14" fill="#0d0d0d">LƯU LƯỢNG 4 NHÁNH · test_500 (n=500) <tspan font-family="'IBM Plex Mono',monospace" font-weight="400" fill="#6e6e6a">· trục 0 → 30%</tspan></text>
                     <line x1="260" y1="30" x2="260" y2="192" stroke="#0d0d0d" stroke-width="1.5"/>
@@ -1481,142 +1245,117 @@ body.editing [contenteditable="true"]{outline:2px dashed var(--red); outline-off
                     <text x="505" y="175" font-family="'IBM Plex Mono',monospace" font-size="13" fill="#0d0d0d">15.4% <tspan fill="#6e6e6a">(77 hàng)</tspan></text>
                     <text x="260" y="216" font-family="'IBM Plex Mono',monospace" font-size="12" fill="#6e6e6a">bốn conditional edge, bốn con số lưu lượng thật</text>
                 </g>
-
-                <line x1="770" y1="10" x2="770" y2="225" stroke="#e8e8e4" stroke-width="2"/>
-
-                <!-- ===== PHẢI: delta macro-F1 (diverging) ===== -->
-                <g>
-                    <text x="800" y="14" font-family="'Archivo',sans-serif" font-weight="800" font-size="14" fill="#0d0d0d">ĐÓNG GÓP CỦA MODULE VÀO macro-F1 · dev_300 (n=300)</text>
-                    <line x1="1180" y1="30" x2="1180" y2="196" stroke="#0d0d0d" stroke-width="2"/>
-                    <g font-family="'IBM Plex Mono',monospace" font-size="12" fill="#6e6e6a">
-                        <text x="980"  y="214" text-anchor="middle">−0.04</text>
-                        <text x="1180" y="214" text-anchor="middle">0</text>
-                        <text x="1380" y="214" text-anchor="middle">+0.04</text>
-                        <line x1="980"  y1="196" x2="980"  y2="202" stroke="#6e6e6a" stroke-width="1.5"/>
-                        <line x1="1380" y1="196" x2="1380" y2="202" stroke="#6e6e6a" stroke-width="1.5"/>
-                    </g>
-                    <!-- must_have_gate: -0.0331 -->
-                    <text x="800" y="52" font-family="'IBM Plex Mono',monospace" font-size="13" fill="#0d0d0d">must_have_gate</text>
-                    <rect x="1014" y="38" width="166" height="22" fill="#ff3300" rx="2"/>
-                    <text x="1006" y="54" font-family="'IBM Plex Mono',monospace" font-size="13" font-weight="600" fill="#c52700" text-anchor="end">−0.0331</text>
-                    <!-- no_gray_zone: +0.0140 -->
-                    <text x="800" y="112" font-family="'IBM Plex Mono',monospace" font-size="13" fill="#0d0d0d">gray_zone (deep_review)</text>
-                    <rect x="1180" y="98" width="70" height="22" fill="#1f4fd8" rx="2"/>
-                    <text x="1258" y="114" font-family="'IBM Plex Mono',monospace" font-size="13" font-weight="600" fill="#1f4fd8">+0.0140</text>
-                    <!-- no_guard: không đo bằng macro-F1 -->
-                    <text x="800" y="172" font-family="'IBM Plex Mono',monospace" font-size="13" fill="#0d0d0d">guard</text>
-                    <rect x="1130" y="158" width="100" height="22" fill="url(#hatch)" stroke="#9a9a96" stroke-width="1.5"/>
-                    <text x="1242" y="174" font-family="'IBM Plex Mono',monospace" font-size="13" fill="#6e6e6a">không đo bằng macro-F1</text>
-                    <text x="800" y="192" font-family="'IBM Plex Mono',monospace" font-size="12" fill="#c52700">đo trên 8 hàng fixture TỔNG HỢP, không phải dev_300</text>
-                </g>
             </svg>
-            <figcaption>Trái: lưu lượng thật (test_500) · Phải: delta macro-F1 khi tắt từng module (dev_300)</figcaption>
+            <figcaption>Lưu lượng thật của bốn conditional edge trên test_500 · delta macro-F1 từng module ở bảng dưới</figcaption>
         </figure>
 
-        <table class="swiss reveal" style="margin-top:14px;">
+        <table class="swiss reveal" style="margin-top:12px;">
             <thead>
-                <tr><th style="width:250px;">Ablation</th><th style="width:830px;">Đo được</th><th>Đọc thế nào</th></tr>
+                <tr><th style="width:250px; font-size:21px;">Ablation</th><th style="width:830px; font-size:21px;">Đo được</th><th style="font-size:21px;">Đọc thế nào</th></tr>
             </thead>
             <tbody>
                 <tr>
-                    <td class="mono" style="font-size:20px; color:var(--red-deep); font-weight:600;">must_have_gate</td>
-                    <td style="font-size:20px;"><b>0.3721</b> vs <b>0.4052</b> khi tắt (<b>−0.0331</b>) · tiết kiệm <b>208.127</b> token<br><code>test_500</code>: loại <b>121</b> hàng, precision <b>0.645</b>, <b>28</b> hàng thật là Good Fit</td>
-                    <td style="font-size:20px;"><b>Đổi độ chính xác lấy token</b>, không phải cải thiện miễn phí</td>
+                    <td class="mono" style="font-size:22px; color:var(--red-deep); font-weight:600;">must_have_gate</td>
+                    <td style="font-size:22px;"><b>−0.0331</b> macro-F1 · tiết kiệm <b>208.127</b> token</td>
+                    <td style="font-size:22px;"><b>Đổi độ chính xác lấy token</b>, không phải cải thiện miễn phí</td>
                 </tr>
                 <tr>
-                    <td class="mono" style="font-size:20px; color:var(--red-deep); font-weight:600;">no_gray_zone</td>
-                    <td style="font-size:20px;"><b>0.4155</b> vs <b>0.4014</b> (<b>+0.0140</b>) · <b>20/300</b> dự đoán đổi</td>
-                    <td style="font-size:20px;"><code>deep_review</code> có đóng góp — nhỏ, và <b>đo được</b></td>
+                    <td class="mono" style="font-size:22px; color:var(--red-deep); font-weight:600;">no_gray_zone</td>
+                    <td style="font-size:22px;"><b>+0.0140</b> macro-F1 · <b>20/300</b> dự đoán đổi</td>
+                    <td style="font-size:22px;"><code>deep_review</code> có đóng góp — nhỏ, và <b>đo được</b></td>
                 </tr>
                 <tr>
-                    <td class="mono" style="font-size:20px; color:var(--red-deep); font-weight:600;">no_guard</td>
-                    <td style="font-size:20px;"><b>HIGH</b> 6/6 quarantine; tắt guard cả 6 chấm <b>0.550 — y như hàng sạch</b><br><b>LOW</b> 0/2 đổi <span style="color:var(--ink-3);">— hai mức không gộp làm một</span></td>
-                    <td style="font-size:20px;">Guard <b>từ chối xử lý</b>, chứ không ngăn được một can thiệp lẽ ra thành công</td>
+                    <td class="mono" style="font-size:22px; color:var(--red-deep); font-weight:600;">no_guard</td>
+                    <td style="font-size:22px;"><b>HIGH</b> 6/6 quarantine; tắt guard cả 6 chấm <b>0.550 — y như hàng sạch</b><br><b>LOW</b> 0/2 đổi <span style="color:var(--ink-3);">— hai mức không gộp làm một</span></td>
+                    <td style="font-size:22px;">Guard <b>từ chối xử lý</b>, chứ không ngăn được một can thiệp lẽ ra thành công</td>
                 </tr>
             </tbody>
         </table>
 
-        <div class="row reveal" style="margin-top:16px; gap:26px;">
-            <div class="col warn-line" style="font-size:20px; flex:1;">
+        <div class="row reveal" style="margin-top:14px; gap:26px;">
+            <div class="col warn-line" style="font-size:19px; flex:1; padding:12px 18px;">
                 Hàng <em>no_guard</em> là <em>TỔNG HỢP</em>: <em>0 / 300</em> CV thật kích hoạt rule nào.
             </div>
-            <div class="col" style="flex:1.15; border:3px solid var(--red); padding:13px 18px; font-family:var(--font-body); font-size:20px; line-height:1.3; color:var(--ink);">
+            <div class="col" style="flex:1.15; border:3px solid var(--red); padding:12px 18px; font-family:var(--font-body); font-size:19px; line-height:1.3; color:var(--ink);">
                 <b>Cổng này loại người vì không khớp tiêu chí nguyên văn</b> — đúng cái lỗi của sàng lọc từ khóa. Khác ở chỗ cái giá <b>đo được</b> và cổng <b>tắt được</b>.
             </div>
         </div>
     </div>
 
     <div class="slide-foot">
-        <div class="src">nguồn: <b>must_have_gate.md</b> · <b>no_gray_zone.md</b> · dev_300 · <b>no_guard.md</b> · fixture 6 HIGH + 2 LOW · <b>test_shipped.md</b> · n=500</div>
-        <div class="pageno">11<span> / 12</span></div>
+        <div class="pageno">10<span> / 11</span></div>
     </div>
 
     <div class="notes">
-        <p>Ba ablation, ba cách đọc khác nhau, và không cái nào được gộp thành một con số "đóng góp của agent". Cổng <code>must_have</code> là cái đắt nhất: nó <b>làm giảm</b> macro-F1 0.0331 để đổi lấy 208.127 token.</p>
+        <p>Ba ablation, ba cách đọc khác nhau, và không cái nào được gộp thành một con số "đóng góp của agent". Cổng <code>must_have</code> là cái đắt nhất: <b>0.3721</b> (bật) vs <b>0.4052</b> (tắt) — nó <b>làm giảm</b> macro-F1 0.0331 để đổi lấy 208.127 token; trên <code>test_500</code> nó loại 121 hàng với precision 0.645, trong đó 28 hàng thật là Good Fit. <code>no_gray_zone</code>: 0.4155 (agent) vs 0.4014 (tắt <code>deep_review</code>).</p>
         <p><b>Phản biện dễ nhất:</b> "Vậy tắt cổng đi cho xong?" Đó chính là lựa chọn mà số đo mở ra — nhưng tắt cổng là trả thêm khoảng 20% token mỗi lần chạy. Điều chúng tôi khẳng định không phải cổng đúng hay sai, mà là <b>cái giá của nó đã được đo</b>, nên đây là một lựa chọn chứ không phải một mặc định.</p>
         <p>Về guard: tôi <b>không</b> tuyên bố guard chặn được tấn công. Sáu hàng bị đầu độc chấm đúng 0.550 — y hệt hàng sạch — kể cả khi tắt guard. Giá trị của guard là từ chối xử lý một tài liệu đang cố can thiệp, không phải ngăn một can thiệp lẽ ra sẽ thành công. Và các hàng đó là fixture tổng hợp, vì 0/300 CV thật kích hoạt rule nào.</p>
-        <p>Cho đủ: cổng <code>must_have</code> giải thích 28 trong 73 hàng Good Fit bị trả về No Fit trên <code>test_500</code>; phần còn lại nằm ở tầng chấm điểm, tức slide 10.</p>
+        <p>Cho đủ: cổng <code>must_have</code> giải thích 28 trong 73 hàng Good Fit bị trả về No Fit trên <code>test_500</code>; phần còn lại nằm ở tầng chấm điểm, tức slide 9.</p>
     </div>
 </section>
 
 <!-- ======================================================================
-     SLIDE 13 — KẾT LUẬN, BÀI HỌC & QA
+     SLIDE 11 — KẾT LUẬN, BÀI HỌC & QA
      ====================================================================== -->
 <section class="slide" aria-label="Kết luận, bài học nghiên cứu và QA">
     <div class="slide-head">
         <div class="kicker"><span class="bar"></span>Kết luận</div>
-        <h2 class="vn">Đã chứng minh được gì, và mang về được gì</h2>
-        <div class="en">Conclusions, research lessons &amp; QA</div>
+        <h2 class="vn">Bốn điều mang về được cho lần dựng agent tiếp theo</h2>
+        <div class="en">What transfers to the next agent you build</div>
         <div class="head-rule"></div>
     </div>
 
     <div class="slide-body">
-        <div class="row" style="gap:44px;">
-            <div class="col reveal" style="flex:0.92;">
-                <div class="two-col-head">Đã chứng minh được gì <span>/ what holds</span></div>
-                <ul class="points" style="font-size:23px;">
-                    <li style="font-size:23px;"><b>E1 đạt và đo được</b>: 0.486 so với 0.000 của mọi baseline</li>
-                    <li style="font-size:23px;"><b>E2 chỉ đạt một phần</b>: +0.04 macro-F1, 2,5 lần token</li>
-                    <li style="font-size:23px;">Giá trị thật: <b>truy vết</b>, <b>chi phí đường tắt</b>, <b>xử lý CV lỗi</b></li>
-                    <li style="font-size:23px;">Tái lập: <code>temperature=0</code>, cache JSONL, log token từng nhánh</li>
-                    <li style="font-size:23px;">Mọi số trên slide sinh từ <b>một lệnh duy nhất</b></li>
-                </ul>
-                <div class="callout" style="margin-top:22px; font-size:20px; border-color:var(--ink);">
-                    <span class="lbl" style="color:var(--ink);">Cố ý không làm (spec §11)</span>
-                    OCR · tiếng Việt trong luồng đo · vector DB / GraphRAG · tự động loại ứng viên
-                </div>
-            </div>
+        <div class="philosophy reveal" style="margin-bottom:22px;">
+            Một hệ thống <span>đo được chỗ mình sai</span> đáng tin hơn một hệ thống chỉ báo cáo chỗ mình đúng
+        </div>
 
-            <div class="col reveal" style="flex:1.08;">
-                <div class="two-col-head">Bài học mang về được <span>/ transferable lessons</span></div>
-                <ol class="lessons" style="margin-top:4px;">
-                    <li style="font-size:23px; margin-bottom:20px;"><b>Nhánh không có số đo là nhánh trang trí.</b></li>
-                    <li style="font-size:23px; margin-bottom:20px;"><b>Đừng bắt LLM làm việc của thuật toán</b> — 198/290 CV chồng lấn.</li>
-                    <li style="font-size:23px; margin-bottom:20px;"><b>Đo baseline mạnh trước khi mừng</b> — prompt hỏng cho 0.2405.</li>
-                    <li style="font-size:23px; margin-bottom:20px;"><b>Tách bất ổn khỏi thiên lệch</b> — p = 0.024 so với p = 0.635.</li>
-                    <li style="font-size:23px; margin-bottom:0;"><b>Đo trước khi mô tả</b> — giữ <code class="mono">extraction_confidence</code>, không route.</li>
-                </ol>
+        <div class="case reveal" style="padding:17px 0;">
+            <span class="n">1</span>
+            <div>
+                <div class="t">Tách bước để quan sát được, không phải để nghe cho giống agent</div>
+                <div class="d">Mỗi nhánh phải trả lời được một câu: tắt nó đi thì mất gì? Nhánh nào không đo được cái giá của mình thì không nên tồn tại.</div>
             </div>
         </div>
 
-        <div class="reveal" style="margin-top:22px; border-top:3px solid var(--ink); padding-top:12px; font-family:var(--font-body); font-size:21px; color:var(--ink-2);">
-            <b style="color:var(--ink);">Việc tiếp theo, đã biết cỡ:</b> cần <b>~436 hàng</b> contested để trả lời câu hỏi ordering — lấy thêm dữ liệu, không chỉnh thêm ngưỡng.
+        <div class="case reveal" style="padding:17px 0;">
+            <span class="n">2</span>
+            <div>
+                <div class="t">Việc nào tất định thì đừng giao cho model</div>
+                <div class="d">Cộng khoảng thời gian, chuẩn hóa tên kỹ năng, tìm câu trích dẫn — viết hàm. Để model làm đúng phần phải phán đoán, và chỉ phần đó.</div>
+            </div>
         </div>
 
-        <div class="closing-quote reveal" style="margin-top:18px;">
-            “Chúng tôi không có một hệ thống chính xác. Chúng tôi có một hệ thống biết mình sai ở đâu, sai bao nhiêu, và đo được điều đó.”
-            <span style="display:block; font-family:var(--font-mono); font-weight:400; font-size:19px; margin-top:10px; color:#ffd9cf;">Q&amp;A · mọi con số trên slide đều có file nguồn ở chân slide</span>
+        <div class="case reveal" style="padding:17px 0;">
+            <span class="n">3</span>
+            <div>
+                <div class="t">Bắt hệ thống chỉ vào bằng chứng, đừng bắt nó giải thích</div>
+                <div class="d">Mọi kết luận phải truy ngược được về một câu trong tài liệu gốc. Lời giải thích viết ra sau khi đã có kết luận là kể chuyện, không phải bằng chứng.</div>
+            </div>
+        </div>
+
+        <div class="case reveal" style="padding:17px 0; border-bottom:0;">
+            <span class="n">4</span>
+            <div>
+                <div class="t">Ghi lại và chạy lại được, trước khi bàn đến độ chính xác</div>
+                <div class="d">Không tái lập được thì mọi con số chỉ là một lần chạy may mắn — kể cả con số đẹp.</div>
+            </div>
+        </div>
+
+        <div class="state-line reveal" style="margin-top:14px;">
+            Với bài toán mà luật đã xếp vào <em>nhóm nguy cơ cao</em>, giải trình được không phải là tính năng cộng thêm — nó là điều kiện để được phép triển khai.
         </div>
     </div>
 
     <div class="slide-foot">
-        <div class="src">nguồn: <b>test_shipped.md</b> · <b>baselines.md</b> · <b>experience.py</b> · <b>bias_school.md</b> / <b>bias_identity.md</b> · <b>extraction_confidence.md</b> · <b>scoring_layer.md</b> · <b>spec §8, §11</b></div>
-        <div class="pageno">12<span> / 12</span></div>
+        <div class="pageno">11<span> / 11</span></div>
     </div>
 
     <div class="notes">
-        <p>Kết bài bằng đúng một câu: chúng tôi không có một hệ thống chính xác, chúng tôi có một hệ thống biết mình sai ở đâu và đo được điều đó. Sáu bài học bên phải dùng lại được cho bất kỳ agent nhiều bước nào, không riêng bài toán CV.</p>
-        <p>Chi tiết từng bài học nếu được hỏi. (2) 198/290 CV dev có khoảng thời gian chồng lấn — đó là lý do <code>calculate_experience</code> tồn tại, một con số đo được chứ không phải trực giác. (3) Prompt rubric đầu tiên sập về <code>No Fit</code> trên 297/300 hàng, macro-F1 0.2405; nay <code>eval/report.py</code> tự cảnh báo mọi run có 95% cùng một nhãn. (5) <code>extraction_confidence</code> xuống 0.00 trên 23,8% lần trích xuất và chỉ nhận 4 giá trị; nó <b>có</b> thông tin nhưng dư thừa, vì <code>total_experience_years is None</code> trả lời đúng câu đó, tất định và miễn phí.</p>
+        <p><b>Slide này cố tình không có con số.</b> Bốn điều trên là thứ người nghe mang về được kể cả khi họ không làm sàng lọc CV. Số liệu nằm ở đây, chỉ lấy ra khi bị hỏi.</p>
+        <p><b>Nếu bị hỏi "vậy rốt cuộc nó có tốt hơn không":</b> E1 đạt — evidence coverage 0.486 so với 0.000 của cả ba baseline. E2 chỉ đạt một phần — hơn baseline mạnh nhất +0.04 macro-F1 nhưng tốn 2,5 lần token, tức là <b>không</b> thắng ở độ chính xác. Phần thắng nằm ở truy vết, đúng như slide 8 đã nói.</p>
+        <p><b>Nếu bị hỏi về ba điều luật đòi ở slide 2:</b> Article 12 — log từng node, cache JSONL, chạy lại ra y hệt. Article 13 — scorecard có trích dẫn truy về offset ký tự trong CV gốc. Article 14 — các công tắc ablation là chỗ người giám sát can thiệp được. Chưa làm conformity assessment; đây là demo nghiên cứu, không phải tuyên bố tuân thủ.</p>
+        <p>Nếu được hỏi thêm, dùng lại các số đã nêu ở slide trước: 4 conditional edge đều có lưu lượng thật đo trên test_500 (slide 10) — không nhánh nào tồn tại chỉ để trông có vẻ agentic. Prompt rubric đầu tiên sập về <code>No Fit</code> trên 297/300 hàng, macro-F1 0.2405; nay <code>eval/report.py</code> tự cảnh báo mọi run có 95% cùng một nhãn. 198/290 CV dev có khoảng thời gian chồng lấn — đó là lý do <code>calculate_experience</code> tồn tại thay vì để model tự suy luận số năm kinh nghiệm.</p>
         <p><b>Phản biện dễ nhất:</b> "Counterfactual trường học p = 0.024 — vậy hệ thống thiên lệch?" Chính xác là: các dịch chuyển <b>có cùng một hướng</b> trên 261 cặp (72 cặp đổi điểm, 24 đổi nhãn), đó là bằng chứng về hướng chứ không phải về độ lớn; nhánh danh tính p = 0.635 cho thấy không phải cái gì cũng lệch. Quan trọng hơn: điểm <b>dịch chuyển</b> khi lẽ ra không được dịch chuyển — đó là bất ổn, một defect riêng, độc lập với thiên lệch. Mean delta gần 0 không chứng minh công bằng.</p>
     </div>
 </section>
