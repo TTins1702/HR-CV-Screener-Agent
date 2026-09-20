@@ -240,6 +240,30 @@ h2.vn{
 .pageno{font-family:var(--font-display); font-weight:800; font-size:26px; color:var(--ink);}
 .pageno span{color:var(--ink-3); font-weight:600; font-size:18px;}
 
+/* Outline chạy suốt — bốn phần của bài, phần đang nói tô đỏ.
+   Nằm ở chân slide cạnh số trang, không chiếm chỗ của nội dung. */
+.outline{
+    list-style:none; display:flex; align-items:baseline; flex:1;
+    margin-left:34px;
+}
+.outline li{
+    font-family:var(--font-mono); font-size:20px; letter-spacing:.05em;
+    color:#c4c4be; padding:0 20px; border-left:1px solid var(--grid); white-space:nowrap;
+}
+.outline li:first-child{border-left:0; padding-left:0;}
+.outline li.on{color:var(--red); font-weight:600;}
+
+/* Slide cảm ơn — chỉ chữ, căn giữa. */
+.thanks{
+    position:absolute; inset:0; display:flex; flex-direction:column;
+    align-items:center; justify-content:center; text-align:center; gap:22px;
+}
+.thanks h2{
+    font-family:var(--font-display); font-weight:800; font-size:84px; line-height:1.06;
+    letter-spacing:-0.025em; color:var(--ink);
+}
+.thanks p{font-family:var(--font-body); font-size:34px; color:var(--ink-3);}
+
 /* Slide ngắt nhịp: chỉ một chữ, căn giữa sân khấu */
 .word-only{
     position:absolute; inset:0;
@@ -542,7 +566,7 @@ body.editing [contenteditable="true"]{outline:2px dashed var(--red); outline-off
     </div>
 
     <div class="slide-foot">
-        <div class="pageno">01<span> / 11</span></div>
+        <div class="pageno">01<span> / 12</span></div>
     </div>
 
     <div class="notes">
@@ -588,7 +612,8 @@ body.editing [contenteditable="true"]{outline:2px dashed var(--red); outline-off
     </div>
 
     <div class="slide-foot">
-        <div class="pageno">02<span> / 11</span></div>
+        <div class="pageno">02<span> / 12</span></div>
+        <ol class="outline"><li class="on">Mở đầu</li><li>Phương pháp</li><li>Kết quả</li><li>Kết luận</li></ol>
     </div>
 
     <div class="notes">
@@ -687,7 +712,8 @@ body.editing [contenteditable="true"]{outline:2px dashed var(--red); outline-off
     </div>
 
     <div class="slide-foot">
-        <div class="pageno">03<span> / 11</span></div>
+        <div class="pageno">03<span> / 12</span></div>
+        <ol class="outline"><li class="on">Mở đầu</li><li>Phương pháp</li><li>Kết quả</li><li>Kết luận</li></ol>
     </div>
 
     <div class="notes">
@@ -826,7 +852,8 @@ body.editing [contenteditable="true"]{outline:2px dashed var(--red); outline-off
     </div>
 
     <div class="slide-foot">
-        <div class="pageno">04<span> / 11</span></div>
+        <div class="pageno">04<span> / 12</span></div>
+        <ol class="outline"><li>Mở đầu</li><li class="on">Phương pháp</li><li>Kết quả</li><li>Kết luận</li></ol>
     </div>
 
     <div class="notes">
@@ -935,7 +962,8 @@ body.editing [contenteditable="true"]{outline:2px dashed var(--red); outline-off
 
 
     <div class="slide-foot">
-        <div class="pageno">05<span> / 11</span></div>
+        <div class="pageno">05<span> / 12</span></div>
+        <ol class="outline"><li>Mở đầu</li><li class="on">Phương pháp</li><li>Kết quả</li><li>Kết luận</li></ol>
     </div>
 
     <div class="notes">
@@ -1000,7 +1028,8 @@ body.editing [contenteditable="true"]{outline:2px dashed var(--red); outline-off
     </div>
 
     <div class="slide-foot">
-        <div class="pageno">06<span> / 11</span></div>
+        <div class="pageno">06<span> / 12</span></div>
+        <ol class="outline"><li>Mở đầu</li><li class="on">Phương pháp</li><li>Kết quả</li><li>Kết luận</li></ol>
     </div>
 
     <div class="notes">
@@ -1020,7 +1049,8 @@ body.editing [contenteditable="true"]{outline:2px dashed var(--red); outline-off
     </div>
 
     <div class="slide-foot" style="border-top:none;">
-        <div class="pageno">07<span> / 11</span></div>
+        <div class="pageno">07<span> / 12</span></div>
+        <ol class="outline"><li>Mở đầu</li><li class="on">Phương pháp</li><li>Kết quả</li><li>Kết luận</li></ol>
     </div>
 
     <div class="notes">
@@ -1105,7 +1135,8 @@ body.editing [contenteditable="true"]{outline:2px dashed var(--red); outline-off
     </div>
 
     <div class="slide-foot">
-        <div class="pageno">08<span> / 11</span></div>
+        <div class="pageno">08<span> / 12</span></div>
+        <ol class="outline"><li>Mở đầu</li><li>Phương pháp</li><li class="on">Kết quả</li><li>Kết luận</li></ol>
     </div>
 
     <div class="notes">
@@ -1205,7 +1236,8 @@ body.editing [contenteditable="true"]{outline:2px dashed var(--red); outline-off
     </div>
 
     <div class="slide-foot">
-        <div class="pageno">09<span> / 11</span></div>
+        <div class="pageno">09<span> / 12</span></div>
+        <ol class="outline"><li>Mở đầu</li><li>Phương pháp</li><li class="on">Kết quả</li><li>Kết luận</li></ol>
     </div>
 
     <div class="notes">
@@ -1283,7 +1315,8 @@ body.editing [contenteditable="true"]{outline:2px dashed var(--red); outline-off
     </div>
 
     <div class="slide-foot">
-        <div class="pageno">10<span> / 11</span></div>
+        <div class="pageno">10<span> / 12</span></div>
+        <ol class="outline"><li>Mở đầu</li><li>Phương pháp</li><li class="on">Kết quả</li><li>Kết luận</li></ol>
     </div>
 
     <div class="notes">
@@ -1348,7 +1381,8 @@ body.editing [contenteditable="true"]{outline:2px dashed var(--red); outline-off
     </div>
 
     <div class="slide-foot">
-        <div class="pageno">11<span> / 11</span></div>
+        <div class="pageno">11<span> / 12</span></div>
+        <ol class="outline"><li>Mở đầu</li><li>Phương pháp</li><li>Kết quả</li><li class="on">Kết luận</li></ol>
     </div>
 
     <div class="notes">
@@ -1357,6 +1391,25 @@ body.editing [contenteditable="true"]{outline:2px dashed var(--red); outline-off
         <p><b>Nếu bị hỏi về ba điều luật đòi ở slide 2:</b> Article 12 — log từng node, cache JSONL, chạy lại ra y hệt. Article 13 — scorecard có trích dẫn truy về offset ký tự trong CV gốc. Article 14 — các công tắc ablation là chỗ người giám sát can thiệp được. Chưa làm conformity assessment; đây là demo nghiên cứu, không phải tuyên bố tuân thủ.</p>
         <p>Nếu được hỏi thêm, dùng lại các số đã nêu ở slide trước: 4 conditional edge đều có lưu lượng thật đo trên test_500 (slide 10) — không nhánh nào tồn tại chỉ để trông có vẻ agentic. Prompt rubric đầu tiên sập về <code>No Fit</code> trên 297/300 hàng, macro-F1 0.2405; nay <code>eval/report.py</code> tự cảnh báo mọi run có 95% cùng một nhãn. 198/290 CV dev có khoảng thời gian chồng lấn — đó là lý do <code>calculate_experience</code> tồn tại thay vì để model tự suy luận số năm kinh nghiệm.</p>
         <p><b>Phản biện dễ nhất:</b> "Counterfactual trường học p = 0.024 — vậy hệ thống thiên lệch?" Chính xác là: các dịch chuyển <b>có cùng một hướng</b> trên 261 cặp (72 cặp đổi điểm, 24 đổi nhãn), đó là bằng chứng về hướng chứ không phải về độ lớn; nhánh danh tính p = 0.635 cho thấy không phải cái gì cũng lệch. Quan trọng hơn: điểm <b>dịch chuyển</b> khi lẽ ra không được dịch chuyển — đó là bất ổn, một defect riêng, độc lập với thiên lệch. Mean delta gần 0 không chứng minh công bằng.</p>
+    </div>
+</section>
+
+
+<!-- ======================================================================
+     SLIDE 12 — CẢM ƠN & QA
+     ====================================================================== -->
+<section class="slide" aria-label="Cảm ơn và trao đổi">
+    <div class="thanks">
+        <h2 class="reveal">Cảm ơn thầy cô và các bạn<br>đã lắng nghe</h2>
+        <p class="reveal">Câu hỏi và trao đổi</p>
+    </div>
+
+    <div class="slide-foot" style="border-top:none;">
+        <div class="pageno">12<span> / 12</span></div>
+    </div>
+
+    <div class="notes">
+        <p>Quay lại slide 9 nếu bị hỏi về chỗ hệ thống hỏng, slide 10 nếu bị hỏi về cái giá của từng cổng, slide 8 nếu bị hỏi so với baseline. Notes của ba slide đó có sẵn số bootstrap, power, ablation và counterfactual.</p>
     </div>
 </section>
 
